@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC
+          "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <title>AppJet Error</title>
+  <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Language" content="en-us" />
+  <script type="text/javascript" src="http://appjet.com/js/343607636acfee88faa2b638330a3370/jquery-1.2.6.js"></script>
+  <script type="text/javascript">
+function toggleFrameView(frameId) {
+  var hidden = $("#frame"+frameId+":hidden")
+  var visible = $("#frame"+frameId+":visible")
+  if (hidden.length > 0) {
+    hidden.show("normal")
+    $("#image"+frameId).attr("src", "http://appjet.com/img/close-arrow.png")
+  } else {
+    visible.hide("normal")
+    $("#image"+frameId).attr("src", "http://appjet.com/img/open-arrow.png")
+  }
+}
+
+function toggleErrorView() {
+  var hidden = $("#hiddentrace:hidden");
+  var visible = $("#hiddentrace:visible");
+  if (hidden.length > 0) {
+    hidden.slideDown("normal");
+  } else {
+    visible.slideUp("normal");
+  }
+  return false;
+}
+
+function load() {
+  $(".zippy").attr("src", "http://appjet.com/img/open-arrow.png")
+}
+</script>
+<style>
+body {
+  font-family: verdana, helvetica, sans-serif;
+  font-size: 60%;
+  margin: 1em;
+}
+#header { border-bottom: 1px solid red; margin-bottom: 0.8em; }
+#errortitle { font-weight: bold; font-size: 1.6em; margin-bottom: 0.76em;}
+#errormessage { font-size: 1.4em; margin-bottom: 1.0em}
+#errorexplanation {
+  background-color: #ffd; margin: 1em; padding: 0 1em;
+  border: 1px solid #cc9;
+  line-height: 150%;
+}
+#errorexplanation ul, #errorexplanation li { margin: 0; padding: 0; }
+#errorexplanation ul { padding-left: 2em; }
+#errorexplanation { font-size: 9pt; }
+#errorexplanation code { font-size: 10pt; }
+#errorexplanation code { padding: 1px; background: #ddc; margin: 0 5px;
+    white-space:nowrap; }
+#errorexplanation code.quote { background: #fcc; }
+#errorexplanation p, #errorexplanation li { margin: 1em 0 }
+#frame0 { margin-top: 2.0em; }
+.errorframe {
+  margin-bottom: 0.5em;
+  margin-top: 1em;
+  cursor: pointer;
+  color: blue;
+}
+.errordetail {
+  text-decoration: underline;
+}
+.errorframe:hover {
+  color: #c47827;
+}
+.sourceline {
+  font-size: 1.4em;
+  color: black;
+  font-family: monospace;
+}
+#statuscode {
+  float: right;
+  font-size: 2.4em;
+  font-weight: bold;
+}
+.codecontext {
+  border: 1px solid black;
+  font-family: monospace;
+  font-size: 1.4em;
+}
+.codecontext td { padding: 0.1em 0.3em; }
+.codecontext .linecell { border-right: 1px solid #888; }
+.codecontext .offendingline { background-color: #ffcccc; }
+.errotemplate .codecontext .linecell { border-right: 1px solid black; }
+pre {
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+}
+
+#errorexplanation tt { font-size: 85%; color: #666; }
+</style>
+</head>
+<body onload="load()">
+<H1>Application Error</H1><P>We're sorry, an error occurred in application <b>reader</b>.</P><P class="errorframe" onclick="toggleErrorView()">Click here for technical details.</P><DIV id="hiddentrace" style="display: none;"><DIV id="errortitle">AppJet error in library global/utilities.js</DIV><DIV id="errormessage">Thrown Error: HttpRequestError: 403 (Line 347)</DIV><DIV id="frame0"><TABLE class="codecontext"><TR><TD class="linecell">343</TD><TD><pre>    return ret;</pre></TD></TR><TR><TD class="linecell">344</TD><TD><pre>  if (ret.status &gt;= 200 &amp;&amp; ret.status &lt; 300) {</pre></TD></TR><TR><TD class="linecell">345</TD><TD><pre>    return ret.data;</pre></TD></TR><TR><TD class="linecell">346</TD><TD><pre>  } else {</pre></TD></TR><TR><TD class="linecell">347</TD><TD class="offendingline"><pre>    throw new HttpRequestError(ret.statusInfo || ret.status, ret);</pre></TD></TR><TR><TD class="linecell">348</TD><TD><pre>  }</pre></TD></TR><TR><TD class="linecell">349</TD><TD><pre>}</pre></TD></TR><TR><TD class="linecell">350</TD><TD><pre></pre></TD></TR><TR><TD class="linecell">351</TD><TD><pre>/**</pre></TD></TR></TABLE></DIV>
+<DIV class="errorframe" onclick="toggleFrameView('1')"><IMG class='zippy' style='margin-right: 0.5em;' align='top' src='http://appjet.com/img/open-arrow.png' id="image1"/><SPAN class="errordetail">...was called from reader code (Lines 233-238):</SPAN> <SPAN class="sourceline">    var req = wpost(API[type]["pins"] + "/" + command,
+      params
+      ,{ headers:{
+        "cook...</SPAN></DIV>
+<DIV style="display: none" id="frame1"><TABLE class="codecontext"><TR><TD class="linecell">229</TD><TD><pre>    //response.setHeader("Content-Type", "text/plain");</pre></TD></TR><TR><TD class="linecell">230</TD><TD><pre>    response.setContentType("text/plain; charset=UTF-8");</pre></TD></TR><TR><TD class="linecell">231</TD><TD><pre>    page.setMode('plain');</pre></TD></TR><TR><TD class="linecell">232</TD><TD><pre>    response.setStatusCode(200);</pre></TD></TR><TR><TD class="linecell">233</TD><TD class="offendingline"><pre>    var req = wpost(API[type]["pins"] + "/" + command,</pre></TD></TR><TR><TD class="linecell">234</TD><TD class="offendingline"><pre>      params</pre></TD></TR><TR><TD class="linecell">235</TD><TD class="offendingline"><pre>      ,{ headers:{</pre></TD></TR><TR><TD class="linecell">236</TD><TD class="offendingline"><pre>        "cookie": cookie,</pre></TD></TR><TR><TD class="linecell">237</TD><TD class="offendingline"><pre>        "Content-Type": "text/plain; charset=UTF-8",</pre></TD></TR><TR><TD class="linecell">238</TD><TD class="offendingline"><pre>      }});</pre></TD></TR><TR><TD class="linecell">239</TD><TD><pre>    response.write("("+req+")");</pre></TD></TR><TR><TD class="linecell">240</TD><TD><pre>  }</pre></TD></TR><TR><TD class="linecell">241</TD><TD><pre>}</pre></TD></TR><TR><TD class="linecell">242</TD><TD><pre>function get_pin(){</pre></TD></TR></TABLE></DIV>
+<DIV class="errorframe" onclick="toggleFrameView('2')"><IMG class='zippy' style='margin-right: 0.5em;' align='top' src='http://appjet.com/img/open-arrow.png' id="image2"/><SPAN class="errordetail">...was called from library global/dispatching.js (Line 37):</SPAN> <SPAN class="sourceline">    f();</SPAN></DIV>
+<DIV style="display: none" id="frame2"><TABLE class="codecontext"><TR><TD class="linecell">33</TD><TD><pre>  }</pre></TD></TR><TR><TD class="linecell">34</TD><TD><pre>  var fname = request.method.toLowerCase() + request.path.replace(/\//g, '_');</pre></TD></TR><TR><TD class="linecell">35</TD><TD><pre>  var f = appjet._internal.global[fname];</pre></TD></TR><TR><TD class="linecell">36</TD><TD><pre>  if (typeof(f) == 'function') {</pre></TD></TR><TR><TD class="linecell">37</TD><TD class="offendingline"><pre>    f();</pre></TD></TR><TR><TD class="linecell">38</TD><TD><pre>    return;</pre></TD></TR><TR><TD class="linecell">39</TD><TD><pre>  }</pre></TD></TR><TR><TD class="linecell">40</TD><TD><pre>  if (fname.charAt(fname.length - 1) == '_') {</pre></TD></TR><TR><TD class="linecell">41</TD><TD><pre>    f = appjet._internal.global[fname + 'main'];</pre></TD></TR></TABLE></DIV>
+<DIV class="errorframe" onclick="toggleFrameView('3')"><IMG class='zippy' style='margin-right: 0.5em;' align='top' src='http://appjet.com/img/open-arrow.png' id="image3"/><SPAN class="errordetail">...was called from reader code (Line 340):</SPAN> <SPAN class="sourceline">dispatch();</SPAN></DIV>
+<DIV style="display: none" id="frame3"><TABLE class="codecontext"><TR><TD class="linecell">336</TD><TD><pre>  return !!((~u.indexOf('AppleWebKit')) &amp;&amp; (~u.indexOf('Mobile')));</pre></TD></TR><TR><TD class="linecell">337</TD><TD><pre>}</pre></TD></TR><TR><TD class="linecell">338</TD><TD><pre>return false;</pre></TD></TR><TR><TD class="linecell">339</TD><TD><pre>}</pre></TD></TR><TR><TD class="linecell">340</TD><TD class="offendingline"><pre>dispatch();</pre></TD></TR><TR><TD class="linecell">341</TD><TD><pre></pre></TD></TR><TR><TD class="linecell">342</TD><TD><pre>/* appjet:css */</pre></TD></TR></TABLE></DIV>
+</DIV>
+</body>
+</html>

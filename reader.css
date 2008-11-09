@@ -1,0 +1,432 @@
+body {
+  margin: 0;
+  font-family: Helvetica;
+  background: #FFFFFF;
+  color: #000000;
+  overflow-x: hidden;
+  -webkit-user-select: none;
+  -webkit-text-size-adjust: none;
+}
+
+/*
+body > *:not(.toolbar) {
+  display: none;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  left: 0;
+  top: 45px;
+  width: 100%;
+  min-height: 372px;
+}
+*/
+
+body[orient="landscape"] > *:not(.toolbar) {
+  min-height: 268px;
+}
+
+br {
+  display: run-in;
+}
+/************************************************************************************************/
+
+body > .topBar {
+  position: absolute;
+  z-index: 100000;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  border-bottom: 1px solid #1F1F1F;
+  border-top: 1px solid #6F6F6F;
+  padding: 10px;
+  height: 35px;
+  width: 100%;
+  top: 0px;
+  background: url(http://utatane.tea.googlepages.com/toolbar.png) rgba(79, 79, 79, 0.6) repeat-x;
+  opacity: 0.8;
+}
+
+
+.topBar > h1 {
+  position: absolute;
+  overflow: hidden;
+  left: 50%;
+  margin: 1px 0 0 -75px;
+  height: 26px;
+  font-size: 13px;
+  width: 150px;
+  font-weight: bold;
+  text-shadow: rgba(0, 0, 0, 0.4) 0px -1px 0;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #FFFFFF;
+}
+
+body[orient="landscape"] > .topBar > h1 {
+  margin-left: -125px;
+  width: 250px;
+}
+
+.button {
+  display: inline-block;
+  overflow: hidden;
+  margin: 0px;
+  margin-top: -5px;
+  border-width: 0px 5px;
+  padding: 0px 3px;
+  width: auto;
+  height: 26px;
+  line-height: 26px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+  color: #FFFFFF;
+  text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-border-image: url(http://utatane.tea.googlepages.com/toolbutton3.png) 0 5 0 5;
+}
+
+.button img {
+  margin-top: 5px;
+}
+
+.indexButton {
+  margin-right: 10px;
+  float: left;
+}
+
+.indexRightButton{
+  margin-left: 10px;
+  float: right;
+}
+
+#pins,
+#subs{
+  max-width: 50px;
+}
+
+#main {
+  width: 100%;
+  position: relative;
+  padding: 0px;
+  margin: 35px 0px;
+}
+
+#subs {
+  z-index: 10100;
+}
+
+
+#main div.list {
+/*  position: absolute;*/
+  display: none;
+/*  top: 0px;
+  left: 0px;*/
+  padding: 0px;
+/*  margin: 35px 0px;*/
+  bottom: 35px;
+  width: 100%;
+  min-height: 100px;
+  max-height: 100px;
+/*  -webkit-transition: -webkit-transform 0.5s ease-out;*/
+  -webkit-transition: left 2s ease-out;
+/*  -webkit-transition: width 0.5s ease-out;*/
+/*  -webkit-transition: left 0.5s ease-out;*/
+/*  -webkit-transition: height 0.5s ease-out;*/
+}
+#main div.list.selected {
+  display: block;
+}
+
+#main div.list * {
+  position: static;
+}
+
+#main div.list div.item {
+  display: block;
+  margin: 0;
+  border-bottom: 1px solid #E0E0E0;
+  padding: 10px 0 10px 10px;
+  font-size: 13px;
+  height: auto;
+}
+
+#main div.list div.item:nth-child(odd) {
+  background-color: #F1F1F1;
+}
+
+#main div.list div.item:nth-child(even) {
+  background-color:#FFFFFF;
+}
+
+#main div.list div.feed_item {
+  height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: url(http://utatane.tea.googlepages.com/listArrow.png) no-repeat right center;
+}
+
+#main div.list div.feed_item.touched {
+  color: silver;
+}
+
+#main div.list div.feed_item.touched img{
+  opacity: 0.5;
+}
+
+#main div.list div.feed_item * {
+  display: inline;
+}
+
+#main div.list img.feed_icon {
+  margin: 2px 8px;
+  padding: auto;
+}
+
+#main div.list span.feed_title {
+  vertical-align: baseline;
+  margin-left: 20px;
+  font-size: 15px;
+  font-weight: bold;
+  vertical-align: 3px;
+  color: inherit;
+}
+
+#main div.list span.feed_count {
+  display: inline;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: right;
+  padding-right: 50px;
+}
+
+#main div.list div.content{
+  display: none;
+  width: 100%;
+  margin: 0px;
+  padding: 0px;
+}
+
+#main div.list.selected div.content{
+  display: block;
+}
+
+#main div.list div.header {
+  background-color: rgb(0, 0, 0);
+  margin: 0px;
+  padding: 20px;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: bold;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#main div.list div.header * {
+  display: inline-block;
+}
+
+#main div.list div.footer {
+  text-align: center;
+  background-color: #CFCFCF;
+  height: 30px;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+#main div#pins_list {
+  counter-reset:result;
+}
+
+#main div.list div.pin_item {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  height: 20px;
+}
+
+#main div.list span.pin_body:before {
+  content: counter(result) ": ";
+  counter-increment: result;
+}
+
+#main div.list a.pin_anchor {
+  color: #000000;
+}
+
+/************************************************************************************************/
+
+#main div.list_item div.item_header {
+  padding: 5px;
+}
+
+#main div.list_item div.item_body {
+  padding: 5px;
+}
+
+#main div.list_item div.item_footer {
+  padding: 5px;
+  border-top: 1px dotted #CBCBCB;
+}
+
+#main div.list div.list_item {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 10px 0px;
+  overflow: hidden;
+  -webkit-line-break: after-white-space;
+  white-space: normal;
+}
+
+#main div.list div.list_item div.item_body img {
+  max-width: 100%;
+}
+
+#main div.list_item.pinned {
+  background-color: #FFF0F0 !important;
+}
+
+/* FullFeed */
+#main div.list_item.fullfeed,
+#main div.list_item.fullfeed a {
+  color: green !important;
+}
+#main div.list_item.fullfeed div.item_body a{
+  color: palegreen !important;
+}
+#main div.list_item.fullfeed {
+  background-color: Honeydew !important;
+}
+
+/* widgets */
+#main .widget {
+  display: inline-block;
+  margin: auto;
+  margin-right: 15px;
+  padding-right: 15px;
+  height: 12px;
+  border-right: 1px solid #CBCBCB;
+}
+
+#main .widget > span.datetime {
+  color: dimgray;
+}
+
+#main .widget > span.pin {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background: transparent url(http://utatane.tea.googlepages.com/attach.png) no-repeat center center;
+}
+
+#main .widget > span.fullfeed {
+  display: block;
+  text-align: center;
+  padding: auto;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  color  : #FFFFFF;
+  background-color: orange;
+  border : 1px solid #FF8C00;
+}
+
+#main .widget > span.fullfeed_loaded {
+  display: block;
+  text-align: center;
+  padding: auto;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  color  : #FFFFFF;
+  background-color: #C6DAB2;
+  border : 1px solid #9FAC8F;
+}
+
+form#login input {
+  display: block;
+}
+
+/*
+a[target="_replace"] {
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  padding-top: 25px;
+  padding-bottom: 25px;
+  font-size: 18px;
+  color: cornflowerblue;
+  background-color: #FFFFFF;
+  background-image: none;
+}
+*/
+
+/************************************************************************************************/
+
+#overlay {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  z-index:  150000;
+  width: 100%;
+  background-color: transparent;
+  display: none;
+}
+
+#dialog {
+  z-index:  160000;
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  width: 80%;
+  height: auto;
+  padding-top: 5px;
+  background-color: black;
+  opacity: 0;
+  -webkit-border-radius: 10px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: #666;
+/*  -webkit-transition: opacity 2s ease-out;*/
+  -webkit-box-shadow:5px 5px 10px #333;
+  color: #FFFFFF;
+  text-align: center;
+  display: none;
+}
+#dialog_content {
+  padding: 8px;
+  text-align: left;
+}
+div.message {
+  text-align: center;
+  min-height: 80px;
+  padding-top: 20px;
+}
+/*
+#main > ul > li.group {
+    position: relative;
+    top: -1px;
+    margin-bottom: -2px;
+    border-top: 1px solid #7d7d7d;
+    border-bottom: 1px solid #999999;
+    padding: 1px 10px;
+    background: url(listGroup.png) repeat-x;
+    font-size: 17px;
+    font-weight: bold;
+    text-shadow: rgba(0, 0, 0, 0.4) 0 1px 0;
+    color: #FFFFFF;
+}
+
+body > ul > li.group:first-child {
+    top: 0;
+    border-top: none;
+}
+
+*/
