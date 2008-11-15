@@ -162,6 +162,15 @@ body[orient="landscape"] > .topBar > h1 {
   background-color:#FFFFFF;
 }
 
+#main div.list div.spacer {
+  height: 20px;
+  color: #FFFFFF;
+  background-color: rgba(79, 79, 79, 0.6);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 #main div.list div.feed_item {
   height: 20px;
   overflow: hidden;
@@ -367,6 +376,25 @@ a[target="_replace"] {
   background-image: none;
 }
 */
+form#config_form > fieldset > div.config_item{
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  border : 1px solid #FFFFFF;
+}
+
+div.config_item span,
+div.config_item input,
+div.config_item select {
+  display: block;
+  margin: 5px;
+}
+
+div.config_box * {
+  display: inline-block;
+}
 
 /************************************************************************************************/
 

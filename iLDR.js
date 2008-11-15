@@ -26,21 +26,21 @@ Object.prototype.values = function(){
   return ret;
 }
 
-Object.prototype.forEach = function(f){
+Object.prototype.forEach = function(f, t){
   this.keys().forEach(function(key, index){
-    f(this[key], key, this);
+    f.call(t || this, this[key], key, this);
   }, this);
 }
 
-Object.prototype.map = function(f){
+Object.prototype.map = function(f, t){
   return this.keys().map(function(key){
-    return f(this[key], key, this);
+    return f.call(t || this, this[key], key, this);
   }, this);
 }
 
-Object.prototype.filter = function(o, f){
+Object.prototype.filter = function(f, t){
   return this.keys().filter(function(key){
-    return f(this[key], key, this);
+    return f.call(t || this, this[key], key, this);
   }, this);
 }
 
@@ -51,13 +51,36 @@ Object.update = function(c, o, exclude){
 }
 
 // Array
+Array.prototype.reduce = function(f, s){
+  var a = iRead.$A(this);
+  s = s? f(s, a.shift(), 0) : a.shift();
+  a.forEach(function(e, r){
+    s = f(s, e, ++r);
+  });
+  return s;
+}
+Array.prototype.uniq = function(){
+  return this.reduce(function(e, r){
+    !~e.indexOf(r) && e.push(r);
+    return e;
+  }, []);
+}
+Array.prototype.flatten = function(){
+  var ret = [];
+  var f = function(arr){
+    arr.forEach(function(e){
+      iRead.isArray(e)? f(e) : ret.push(e);
+    });
+  }
+  f(this);
+  return ret;
+}
+
 Array.times = function(n, f){
-  for (var i = 0; i < n; i++)
-    f(n);
+  for (var i = 0; i < n; i++) f(n);
 }
 
 // static values
-iRead.config = {};
 iRead.api = {
   url:    'http://reader.appjet.net/',
 };
@@ -128,12 +151,30 @@ iRead.$N = function(name, attrs, childs){
 iRead.$T = function(text){
   return document.createTextNode(text);
 }
+// delete
 iRead.$D = function(elm){
   var range = document.createRange();
   range.selectNodeContents(elm);
   range.deleteContents();
   range.detach();
 }
+// remove
+// reuse elements => available
+iRead.$d = function(elm){
+  var range = document.createRange();
+  range.selectNodeContents(elm);
+  var df = range.extractContents();
+  iRead.$A(df.childNodes).forEach(function(e){
+    iRead.$R(e);
+  });
+  range.insertNode(df);
+  range.detach();
+  return elm;
+}
+iRead.$R = function(elm){
+  return elm.parentNode.removeChild(elm);
+}
+
 iRead.$DF = function(){
   return document.createDocumentFragment();
 }
@@ -181,23 +222,23 @@ iRead.ready = function(){
   this.$CF.range.selectNode(document.body);
   this.body = document.body;
   this.head = document.getElementsByTagName('head')[0];
-  this.login_form = iRead.$CF('<form id="login"><fieldset>id<input type="text" value="" name="reader_id" />pass<input type="password" value="" name="reader_password" /><div><select name="reader_type" size=3><option value="LDR">LDR<option value="FLDR">FLDR</select></div><input type="button" value="Login" onclick="(function(){ iRead.start() })();" /><input type="button" value="DELETE" onclick="(function(){ iRead.del() })();" /></fieldset></form>');
+  this.login_form = iRead.$CF('<form id="login"><fieldset>id<input type="text" value="" name="reader_id" />pass<input type="password" value="" name="reader_password" /><div><select name="reader_type" size=3><option value="LDR">LDR<option value="FLDR">FLDR</select></div><input type="button" value="Login" onclick="(function(){ iRead.start() })();" /><input type="button" value="DELETE" onclick="(function(){ iRead.del() })();" /></fieldset></form>').firstChild;
   this.hideUrlBar();
   // Connect
   this.Event.connect("orientationchange", this.hideUrlBar, window, false);
   this.Event.connect("click", function(){
-    (iRead.View.mode == 'subs')? iRead.View.show_feed() : iRead.View.show_subs();
+    !(iRead.View.mode == 'subs') && iRead.View.show_subs();
   }, this.$('subs'), false);
   this.Event.connect("click", function(){
-    (iRead.View.mode == 'pins')? iRead.View.show_feed() : iRead.View.show_pins();
+    !(iRead.View.mode == 'pins') && iRead.View.show_pins();
   }, this.$('pins'), false);
   this.Event.connect("click", function(){
     iRead.View.reload();
   }, this.$('reload'), false);
   this.Event.connect("click", function(){
-    (iRead.View.mode == '')? iRead.View.show_feed() : iRead.View.show_pins();
+    iRead.View.config();
   }, this.$('config'), false);
-  // for PC Safari debuging
+  // for PC Safari debuging and testing
   this.Event.connect('keypress', function(e){
     var code= e.keyCode || e.charCode;
     var key = String.fromCharCode(code);
@@ -321,7 +362,7 @@ iRead.LocalConfig = {};
 iRead.load = function(){
   this.Dialog.message({
     message: 'checking login info...',
-    title  : 'loading'
+    title  : 'Loading'
   });
   SQL(this.db, function(tr){
     tr.createTable('config', {key: 'TEXT', value: 'TEXT'});
@@ -343,24 +384,29 @@ iRead.load = function(){
 //    this.apikey = this.LocalConfig["apikey"];
     this.type   = this.LocalConfig["type"];
     if(!this.cookie || !this.type) throw iRead.error.login;
+    this.Config = new iRead.ConfigManager(this.LocalConfig);
     this.Cookie.create(this.cookie);
     // get config and all contents
     this.Dialog.message({
       message: 'loading original config...',
-      title  : 'loading'
+      title  : 'Loading'
     });
     return Chain.list([
       this.API.config()
       .add(function(res){
         this.Dialog.message({
           message: 'loading pins and feeds...',
-          title  : 'loading'
+          title  : 'Loading'
         });
         return Chain.hash({
           pins  : this.API.pins(),
           feeds : this.API.feeds()
         })
       }, this)
+      .error(function(e){
+        console.info(e);
+        throw e;
+      })
       .add(function(hash){
         if(hash.pins[0] && hash.feeds[0]) return true;
         else  throw iRead.error.login;
@@ -371,7 +417,7 @@ iRead.load = function(){
       if(list[0][0] && list[1][0]){
         this.Dialog.message({
           message: 'done',
-          title  : 'loading',
+          title  : 'Loading',
           time   : 0.5
         });
         // this.List.show(true);
@@ -387,21 +433,13 @@ iRead.load = function(){
   }, this);
 }
 
-iRead.del = function(){
-  SQL(this.db, function(tr){
-    tr.del('config', {'key': 'cookie'});
-    tr.del('config', {'key': 'type'  });
-//    tr.delAll('config');
-  })
-}
-
 // iRead Start
 iRead.start = function(){
   if(this.start.flag) return;
   else this.start.flag = true;
   this.Dialog.hide();
   var form = this.$('login');
-  XHR(this.api.login, {
+  return XHR(this.api.login, {
     method: 'POST',
     data  : {
       type    : form.reader_type.value,
@@ -436,12 +474,27 @@ iRead.start = function(){
 iRead.start.flag = false;
 
 iRead.login = function(){
-  this.Dialog.create(this.login_form, 'Login');
+  this.Dialog.create(this.login_form.cloneNode(true), 'Login');
   this.Dialog.show();
+}
+
+iRead.logout = function(){
+  return SQL(this.db, function(tr){
+    tr.del('config', {'key': 'cookie'});
+    tr.del('config', {'key': 'type'  });
+//    tr.delAll('config');
+  })
+  .add(function(){
+    return this.View.clear();
+  }, this)
+  .add(function(){
+    this.load();
+  }, this);
 }
 
 iRead.Dialog = {
   create: function(element, title){
+    // iRead.$D(this.content);
     iRead.$D(this.content);
     title && (this.title.innerHTML = title);
     this.content.appendChild(element);
@@ -454,7 +507,7 @@ iRead.Dialog = {
     this.main.style.display = 'block';
   },
   hide: function(){
-    Chain.loop(6, function(){
+    return Chain.loop(6, function(){
       this.main.style.opacity -= 0.1;
       return Chain.later(0.005);
     }, this)
@@ -494,6 +547,269 @@ iRead.Dialog = {
 }
 iRead.Ready.add(iRead.Dialog);
 
+iRead.ConfigManager = new iRead.Class({
+  initialize: function(config){
+    config.forEach(function(val, key){
+      this.set(key, val);
+    }, this);
+    this.states = {
+      save: false,
+    };
+    this.signals = [];
+  },
+  // from FLDR Source
+  type: {
+    keep_new       : 'Boolean',
+    show_all       : 'Boolean',
+    use_autoreload : 'Boolean',
+    use_wait       : 'Boolean',
+    use_pinsaver   : 'Boolean',
+    use_scroll_hilight: 'Boolean',
+    use_prefetch_hack : 'Boolean',
+    use_clip_ratecopy : 'Boolean',
+    use_instant_clip_ratecopy : 'Boolean',
+    reverse_mode   : 'Boolean',
+    use_inline_clip : 'Boolean',
+    use_limit_subs  : 'Boolean',
+    default_public_status : 'Boolean',
+    current_font   : 'Number',
+    autoreload     : 'Number',
+    scroll_px      : 'Number',
+    wait           : 'Number',
+    max_pin        : 'Number',
+    max_view       : 'Number',
+    items_per_page : 'Number',
+    prefetch_num   : 'Number',
+    use_instant_clip : 'Number',
+    limit_subs     : 'Number',
+    view_mode      : 'String',
+    sort_mode      : 'String',
+    touch_when     : 'String',
+    scroll_type    : 'String'
+  },
+  setable_config: [
+    {
+      key: 'touch_when',
+      text:'When to mark a feed as read',
+      type: 'select',
+      data: [
+        ['Immediately after loading', 'onload'],
+        ['When moving to the next feed', 'onclose'],
+//        ['When marked as read', '']
+      ]
+    },
+    {
+      key: 'prefetch_num',
+      text: 'Prefetching',
+      type: 'select',
+      data: [
+        ['default', 2],
+        ['1', 1],
+        ['2', 2],
+        ['3', 3],
+        ['4', 4],
+        ['5', 5]
+      ]
+    },
+    {
+      key: 'sort_mode',
+      text: 'Sort mode',
+      type: 'select',
+      data: [
+        ['New', 'modified_on'],
+        ['Old', 'modified_on:reverse'],
+        ['Unread items (desc.)', 'unread_count'],
+        ['Unread items (asc.)', 'unread_count:reverse'],
+        ['Title', 'title:reverse'],
+        ['Rating', 'rate'],
+        ['Subscribers (desc.)', 'subscribers_count'],
+        ['Subscribers (asc.)', 'subscribers_count:reverse']
+      ]
+    },
+    {
+      key: 'reverse_mode',
+      text: 'Sort order',
+      type: 'select',
+      data: [
+        ['New articles first', false],
+        ['Old articles first', true]
+      ]
+    },
+    {
+      key: 'max_view',
+      text: 'Number of new articles per page',
+      type: 'input',
+      data: 'articles (max: 200)'
+    },
+    {
+      key: 'view_mode',
+      text: 'View Mode',
+      type: 'select',
+      data: [
+        ['Flat', 'flat'],
+        ['Folder', 'folder'],
+        ['Rating', 'rate'],
+        ['Subscribers', 'subscribers'],
+      ]
+    },
+    //{
+    //  key: 'limit_subs',
+    //},
+    {
+      type: 'box',
+      data: [
+        {
+          type: 'button',
+          text: 'save',
+          slot: function(e){
+            iRead.Config.save();
+          },
+        },
+        {
+          type: 'button',
+          text: 'cancel',
+          slot: function(e){
+            iRead.Config.cancel();
+          },
+        },
+        {
+          type: 'button',
+          text: 'log out',
+          slot: function(e){
+            iRead.logout();
+          },
+        }
+      ]
+    }
+  ],
+  convert: function(val, type){
+    switch(type){
+      case 'Number':
+        val = val - 0;
+        break
+      case 'Boolean':
+        val = (val == 'true');
+        break;
+      case 'String':
+        val = val + '';
+        break;
+    }
+    return val;
+  }
+  }, {
+  //default config
+  "max_view" : 20,
+  set: function(key, val){
+    var type = iRead.ConfigManager.type;
+    if(type[key]){
+      val = iRead.ConfigManager.convert(val, type[key]);
+    }
+    this[key] = val;
+    return this;
+  },
+  create: function(){
+    var form = iRead.$N('form', {id: 'config_form'});
+    var fieldset = iRead.$N('fieldset');
+    var df = iRead.$DF();
+
+    iRead.ConfigManager.setable_config.forEach(function(data){
+      var element = this['create_'+data.type](data);
+      console.info(data);
+      df.appendChild(element);
+    }, this);
+    fieldset.appendChild(df);
+    form.appendChild(fieldset);
+    iRead.Dialog.create(form, 'Config');
+    iRead.Dialog.show();
+  },
+  clear_signal: function(){
+    this.signals.forEach(function(sig){
+      iRead.Event._disconnect(sig);
+    });
+  },
+  save: function(){
+    if(this.states.save) return false;
+    this.states.save = true;
+    this.clear_signal();
+    var self = this;
+    var form = iRead.$('config_form');
+    return SQL(iRead.db, function(tr){
+      iRead.ConfigManager.setable_config.forEach(function(data){
+        console.info(form[data.key] && form[data.key].value);
+        var key = data.key;
+        if(!key) return;
+        var val = form[key].value;
+        if(key && val){
+          this.set(key, val);
+          tr.del('config', {'key': key});
+          tr.insert('config', {'key': key, 'value': val});
+        }
+      }, self);
+    })
+    .error(function(e){
+      console.info(e);
+      console.info('SQL Error');
+    })
+    .add(function(){
+      iRead.Dialog.hide();
+      this.states.save = false;
+      iRead.View.reload();
+      console.info('Config Set');
+    }, this)
+    .error(function(e){
+      console.info(e);
+    });
+  },
+  cancel: function(){
+    this.clear_signal();
+    iRead.Dialog.hide();
+    return iRead.View.reload();
+  },
+  // need to refactor
+  create_select: function(data){
+    var div = iRead.$N('div', {'class': 'config_item config_select'}, [
+      iRead.$N('span', {}, data.text),
+      iRead.$N('select', {'name': data.key}, data.data.map(function(d){
+         var option = iRead.$N('option', {'value': d[1]}, d[0]);
+         if(this[data.key] == d[1]) option.selected = true;
+         return option;
+       }, this)),
+    ]);
+    return div;
+  },
+  create_radio: function(data){
+    var div = iRead.$N('div', {'class': 'config_item config_radio'}, [
+      iRead.$N('span', {}, data.text),
+      data.data.map(function(d){
+        var radio = iRead.$N('input', {type: 'radio', 'name': data.key, value: d[1]});
+        if(this[data.key] == d[1]) radio.checked = true;
+        return [radio, d[0]];
+      }, this)
+      ].flatten()
+    );
+    return div;
+  },
+  create_input: function(data){
+    var div = iRead.$N('div', {'class': 'config_item config_input'}, [
+      iRead.$N('span', {}, data.text),
+      iRead.$N('input', {type: 'text', value: this[data.key], name: data.key}),
+      iRead.$N('span', {}, data.data)
+      ]);
+    return div;
+  },
+  create_button: function(data){
+    var div = iRead.$N('div', {'class': 'config_item config_button'});
+    var button = iRead.$N('input', {type: 'button', value: data.text});
+    this.signals.push(iRead.Event.connect('click', data.slot, button, false));
+    div.appendChild(button);
+    return div;
+  },
+  create_box: function(data){
+    var div = iRead.$N('div', {'class': 'config_item config_box'}, (data.data.map(function(d){ return this['create_'+d.type](d) }, this)));
+    return div;
+  },
+});
+
 // iRead API
 iRead.API = {
   // functions for loading
@@ -504,13 +820,17 @@ iRead.API = {
         ApiKey   : iRead.Config.ApiKey,
         type     : iRead.type,
         cookie   : iRead.cookie,
-        unread   : iRead.Config.use_limit_subs,
+        unread   : (iRead.Config["show_all"]? 0 : 1),
         from_id  : '0',
         limit    : iRead.Config.limit_subs
     }})
     .add(function(res){
       this.List.set(res.responseText);
-    }, iRead);
+    }, iRead)
+    .error(function(e){
+      console.info(e);
+      throw iRead.error.api;
+    });
   },
   config: function(){
     return XHR(iRead.api.config, {
@@ -520,8 +840,15 @@ iRead.API = {
         cookie   : iRead.cookie
     }})
     .add(function(res){
-      this.Config = eval(res.responseText);
-    }, iRead);
+      var config = eval(res.responseText);
+      config.forEach(function(val, key){
+        if(!(key in this.Config)) this.Config.set(key, val);
+      }, this);
+    }, iRead)
+    .error(function(e){
+      console.info(e);
+      throw iRead.error.api;
+    });
   },
   pins: function(){
     return XHR(iRead.api.pins, {
@@ -534,13 +861,25 @@ iRead.API = {
     }})
     .add(function(res){
       this.Pin.set(res.responseText);
-    }, iRead);
+    }, iRead)
+    .error(function(e){
+      console.info(e);
+      throw iRead.error.api;
+    });
   },
   fullfeed: function(){
+    if(iRead.FullFeed.enable) return (function(){ return true });
+    iRead.FullFeed.enable = true;
     return JSONP('http://wedata.net/databases/LDRFullFeed/items.json')
     .add(function(items){
       this.FullFeed.set(items);
-    }, iRead);
+    }, iRead)
+    .error(function(e){
+      console.info(e);
+      iRead.FullFeed.enable = false;
+      iRead.FullFeed.clear();
+      throw iRead.error.api;
+    });
   },
   access: function(url){
     return XHR(iRead.api.access, {
@@ -551,6 +890,10 @@ iRead.API = {
     .add(function(res){
       return eval(res.responseText);
     })
+    .error(function(e){
+      console.info(e);
+      throw iRead.error.api;
+    });
   },
   touch: function(id){
     return XHR(iRead.api.touch, {
@@ -561,6 +904,10 @@ iRead.API = {
         cookie        : iRead.cookie,
         subscribe_id  : id
     }})
+    .error(function(e){
+      console.info(e);
+      throw iRead.error.api;
+    })
     .add(function(res){
       var code = eval(res.responseText);
       if(code["ErrorCode"]) throw iRead.error.api;
@@ -577,88 +924,196 @@ iRead.View = {
   next: function(){
     if(!(this.mode == 'feed')) return false;
     window.scrollTo(0, 0);
-    if(!iRead.Feed.next()){
+    var next = iRead.Feed.next();
+    if(!next){
       iRead.Dialog.message({
         message: 'This is the last feed.',
         title  : 'Feed Notice',
         time   : 0.5
       });
     }
+    return next;
   },
   prev: function(){
     if(!(this.mode == 'feed')) return false;
     window.scrollTo(0, 0);
-    if(!iRead.Feed.prev()){
+    var prev = iRead.Feed.prev()
+    if(!prev){
       iRead.Dialog.message({
         message: 'This is the first feed.',
         title  : 'Feed Notice',
         time   : 0.5
       });
     }
+    return prev;
   },
   touch: function(){
     if(!(this.mode == 'feed')) return false;
-    iRead.Feed.touch();
+    return iRead.Feed.touch();
+  },
+  sort: function(mode){
+    window.scrollTo(0, 0);
+    iRead.List.sort(mode);
+  },
+  config: function(){
+    console.info('CONFIG');
+    window.scrollTo(0, 0);
+    return Chain.add(function(){
+      iRead.List.hide();
+      iRead.Pin.hide();
+      return iRead.Feed.hide();
+    })
+    .add(function(){
+      console.info('HIDE');
+      iRead.Config.create();
+    })
+    .error(function(e){
+      console.info(e);
+    });
   },
   reload: function(){
-    iRead.
+    window.scrollTo(0, 0);
+    return Chain.add(function(){
+      iRead.List.hide();
+      iRead.Pin.hide();
+      return iRead.Feed.hide();
+    })
+    .add(function(){
+      iRead.Feed.clear();
+      iRead.List.clear();
+      this.mode = 'reload';
+      iRead.Dialog.message({
+        message: 'Now loading feeds...',
+        title  : 'Subs Notice'
+      });
+      return iRead.API.feeds()
+      .add(function(){
+        iRead.Dialog.message({
+          message: 'done',
+          title  : 'Subs Notice',
+          time   : 0.5
+        });
+        this.start(true);
+      }, this)
+      .error(function(e){
+        console.info(e);
+        iRead.Dialog.message({
+          message: 'API Error',
+          title  : 'Subs Notice'
+        });
+      });
+    }, this)
+    .error(function(e){
+      console.info(e);
+    });
   },
   show_subs: function(){
     if(this.mode == 'subs') return false;
     window.scrollTo(0, 0);
-    iRead.Pin.hide();
-    iRead.Feed.hide();
-    iRead.List.show();
-    this.restore = this.mode;
-    this.mode = 'subs';
+    return Chain.add(function(){
+      iRead.Pin.hide();
+      return iRead.Feed.hide();
+    })
+    .add(function(){
+      iRead.List.show();
+      this.restore = this.mode;
+      this.mode = 'subs';
+    }, this)
+    .error(function(e){
+      console.info(e);
+    });
   },
   show_pins: function(){
     if(this.mode == 'pins') return false;
     window.scrollTo(0, 0);
-    iRead.List.hide();
-    iRead.Feed.hide();
-    iRead.Pin.show();
-    this.restore = this.mode;
-    this.mode = 'pins';
+    return Chain.add(function(){
+      iRead.List.hide();
+      return iRead.Feed.hide();
+    })
+    .add(function(){
+      iRead.Pin.show();
+      this.restore = this.mode;
+      this.mode = 'pins';
+    }, this)
+    .error(function(e){
+      console.info(e);
+    });
   },
   show_feed: function(id){
     if(this.mode == 'feed') return false;
     window.scrollTo(0, 0);
-    iRead.List.hide();
-    iRead.Pin.hide();
-    iRead.Feed.show(id);
     this.restore = this.mode;
     this.mode = 'feed';
+    return Chain.list([
+      iRead.List.hide(),
+      iRead.Pin.hide(),
+      iRead.Feed.show(id)
+    ])
+    .error(function(e){
+      console.info(e);
+    });
   },
-  start: function(){
+  start: function(reload){
     window.scrollTo(0, 0);
-    iRead.Pin.create();
-    iRead.List.create();
-    iRead.Feed.create(true);
-    iRead.Feed.hide();
-    iRead.Pin.hide();
-    iRead.List.show();
+    iRead.Pin.create(reload);
+    iRead.List.create(reload);
+    iRead.Feed.create(reload);
     this.restore = '';
     this.mode = 'subs';
+    return Chain.add(function(){
+      iRead.Pin.hide();
+      return iRead.Feed.hide();
+    })
+    .add(function(){
+      iRead.List.show();
+    })
+    .error(function(e){
+      console.info(e);
+    });
+  },
+  clear: function(){
+    iRead.Feed.clear();
+    iRead.List.clear();
+    iRead.Pin.clear();
+    return Chain.add(function(){
+      return iRead.Feed.hide();
+    })
+    .add(function(){
+      iRead.Pin.hide();
+      iRead.List.hide();
+    })
+    .error(function(e){
+      console.info(e);
+    });
   },
 }
 
 // iRead feeds list => subs
 // important config: sortmode, view_mode, limit_subs
 
-iRead.List= {
+iRead.List = {
   subs: [],
   current: 0,
-  mode: 'subs',
   element: iRead.$N('div', {'id': 'subs_list', 'class': 'list'}),
+  elements: {
+    spacer: iRead.$N('div', {'class': 'spacer'}),
+  },
+  rates: [
+    '☆☆☆☆☆',
+    '★☆☆☆☆',
+    '★★☆☆☆',
+    '★★★☆☆',
+    '★★★★☆',
+    '★★★★★'
+  ],
   set: function(text){
-    this.clear();
     this.subs = eval(text).map(function(sub){
       return new iRead.Feed(sub);
     });
   },
   ready: function(){
     var self = this;
+    iRead.$('main').appendChild(this.element);
     iRead.Event.connect('touchstart', function(es){
       if(!(iRead.View.mode == 'feed')) return;
       var x = es.touches[0].pageX;
@@ -675,47 +1130,173 @@ iRead.List= {
   },
   next: function(){
     if(this.current == (this.subs.length - 1)) return false;
+    this.touch_feed();
     var current = this.subs[this.current];
     var next    = this.subs[++this.current];
-    // console.info('NEXT');
-    iRead.DOM.removeClass(current.elements.element, 'selected');
-    iRead.DOM.addClass(next.elements.element, 'selected');
-    next.create();
-    this.read();
-    return next;
+    console.info('NEXT');
+    return Chain.add(function(){
+      current.close();
+      next.read();
+      next.load();
+      this.read();
+    }, this);
   },
   prev: function(){
     if(!this.current) return false;
+    this.touch_feed();
     var current = this.subs[this.current];
     var prev    = this.subs[--this.current];
-    // console.info('PREV');
-    iRead.DOM.removeClass(current.elements.element, 'selected');
-    iRead.DOM.addClass(prev.elements.element, 'selected');
-    prev.create();
-    this.read();
-    return prev;
+    console.info('PREV');
+    return Chain.add(function(){
+      current.close();
+      prev.read();
+      prev.load();
+      this.read();
+    }, this);
   },
   touch_feed: function(){
     var feed = this.subs[this.current];
     if(!feed) return false;
     // console.info('TOUCH');
-    feed.touch();
-    return feed;
+    return feed.touch();
   },
   create: function(){
-    iRead.$('main').appendChild(this.element);
   },
-  create_feed: function(reload){
-    if(reload) {
-      var df_subs = iRead.$DF();
-      var df_lists  = iRead.$DF();
-      this.subs.forEach(function(feed, index){
-        df_subs.appendChild(feed.create_feedlist());
-        df_lists.appendChild(feed.create_feedcontent(index));
-      });
-      this.element.appendChild(df_subs);
-      iRead.$('main').appendChild(df_lists);
+  sort: function(mode){
+    iRead.$d(this.element);
+    this.create_feed(mode);
+  },
+  spacer: function(mode, sub){
+    this.elements.spacer.cloneNode(true);
+    switch(mode){
+      case 'rate':
+        spacer = this.elements.spacer.cloneNode(true);
+        spacer.appendChild(iRead.$T(this.rates[sub]));
+        break;
+      case 'subscribers':
+        spacer = this.elements.spacer.cloneNode(true);
+        if(sub.length < 2){
+          var begin = sub[0].subscribers_count;
+          spacer.appendChild(iRead.$T(begin+' - '+(begin-0+1)+' users'));
+        } else {
+          var begin = sub[0].subscribers_count;
+          var last  = sub[sub.length-1].subscribers_count;
+          spacer.appendChild(iRead.$T(last+' - '+begin+' users'));
+        }
+        break;
+      case 'folder':
+        spacer = this.elements.spacer.cloneNode(true);
+        spacer.appendChild(iRead.$T(sub));
+        break;
     }
+    return spacer;
+  },
+  // sort + view mode
+  create_feed: function(mode){
+    var df_subs = iRead.$DF();
+    var df_lists  = iRead.$DF();
+    switch(mode || iRead.Config.view_mode){
+     //  'flat'        : 'Flat',
+     //  'folder'      : 'Folder',
+     //  'rate'        : 'Rating',
+     //  'subscribers' : 'Subscribers',
+     //  'domain'      : 'Domain'
+      case 'rate':
+        this.subs = this.subs.reduce(function(memo, feed){
+          memo[5-feed.rate].push(feed);
+          return memo;
+        }, [[],[],[],[],[],[]])
+        .map(function(rate_array, index){
+          if(rate_array.length){
+            var rate = 5 - index;
+            rate_array = this.mode_sort(rate_array);
+            df_subs.appendChild(iRead.List.spacer('rate', rate));
+            return rate_array.map(function(feed, index){
+              df_subs.appendChild(feed.create_feedlist());
+              df_lists.appendChild(feed.create_feedcontent(index));
+              return feed;
+            });
+          } else {
+            return rate_array;
+          }
+        }, this).flatten();
+        break;
+      case 'folder':
+        var ret = {};
+        this.subs.map(function(feed, index){
+          ret[feed.folder] || (ret[feed.folder] = []);
+          ret[feed.folder].push(feed);
+          return feed;
+        });
+        this.subs = ret.keys().sort()
+        .map(function(key){
+          var folder_array = ret[key];
+          if(folder_array.length){
+            folder_array = this.mode_sort(folder_array);
+            df_subs.appendChild(iRead.List.spacer('folder', key));
+            return folder_array.map(function(feed, index){
+              df_subs.appendChild(feed.create_feedlist());
+              df_lists.appendChild(feed.create_feedcontent(index));
+              return feed;
+            });
+          } else {
+            return folder_array;
+          }
+        }, this).flatten();
+        break;
+      case 'subscribers':
+        var len = this.subs.length;
+        var lim = (len)? len / 6 : 0;
+        var key = "subscribers_count";
+        this.subs = this.subs.sort(function(a, b){
+          return (a[key] == b[key] ? (a['title'] > b['title'] ? 1 : -1 ): a[key] < b[key] ? 1 : -1);
+        })
+        .reduce(function(memo, feed, index){
+          memo[(lim)? Math.floor(index / lim) : 0].push(feed);
+          return memo;
+        }, [[],[],[],[],[],[]])
+        .map(function(count_array, index){
+          if(count_array.length){
+            count_array = this.mode_sort(count_array);
+            df_subs.appendChild(iRead.List.spacer('subscribers', count_array));
+            return count_array.map(function(feed, index){
+              df_subs.appendChild(feed.create_feedlist());
+              df_lists.appendChild(feed.create_feedcontent(index));
+              return feed;
+            });
+          } else {
+            return count_array;
+          }
+        }, this).flatten();
+        break;
+      case 'flat':
+      default:
+        this.subs = this.mode_sort(this.subs).map(function(feed, index){
+          df_subs.appendChild(feed.create_feedlist());
+          df_lists.appendChild(feed.create_feedcontent(index));
+          return feed;
+        });
+        break;
+    }
+    this.element.appendChild(df_subs);
+    iRead.Feed.elements.element.appendChild(df_lists);
+  },
+  mode_sort: function(list){
+    //  'modified_on'          : 'New',
+    //  'modified_on:reverse'  : 'Old',
+    //  'unread_count'         : 'Unread items (desc.)',
+    //  'unread_count:reverse' : 'Unread items (asc.)',
+    //  'title:reverse'        : 'Title',
+    //  'rate'                 : 'Rating',
+    //  'subscribers_count'    : 'Subscribers (desc.)',
+    //  'subscribers_count:reverse'  : 'Subscribers (asc.)'
+    var tmp = iRead.Config.sort_mode.split(':');
+		var key = tmp[0];
+		var option = tmp[1];//reverse
+    if(option == 'reverse') list.reverse();
+    return list.sort(function(a, b){
+      return (a[key] == b[key] ? 0 : a[key] < b[key] ? 1 : -1);
+    });
   },
   show: function(){
     iRead.DOM.addClass(this.element, 'selected');
@@ -723,34 +1304,40 @@ iRead.List= {
   },
   show_feed: function(id){
     if(id){
-      this.subs.some(function(feed, i){
+      if(this.subs.some(function(feed, i){
         if(feed.subscribe_id == id){
           this.current = i;
-          iRead.DOM.addClass(feed.elements.element, 'selected');
-          feed.create();
           return true;
         } else {
           return false;
         }
-      }, this);
-      this.read();
+      }, this)){
+        return Chain.add(function(){
+          this.subs[this.current].read();
+          this.subs[this.current].load();
+          this.read();
+        }, this);
+      } else {
+        return false;
+      }
     } else {
       if(this.subs && this.subs[this.current]){
-        iRead.DOM.addClass(this.subs[this.current].elements.element, 'selected');
-        this.subs[this.current].create();
-        this.read();
+        return Chain.add(function(){
+          this.subs[this.current].read();
+          this.subs[this.current].load();
+          this.read();
+        }, this);
       }
+      return false;
     }
-    return this.subs[this.current];
   },
   hide: function(){
     iRead.DOM.removeClass(this.element, 'selected');
     return this.element;
   },
   hide_feed: function(){
-    if(this.subs && this.subs[this.current]){
-      iRead.DOM.removeClass(this.subs[this.current].elements.element, 'selected');
-      return this.subs[this.current];
+    if(this.subs && this.subs[this.current] && iRead.View.mode == 'feed'){
+      return this.subs[this.current].close();
     } else {
       return false;
     }
@@ -760,11 +1347,23 @@ iRead.List= {
     this.current = 0;
     this.element && iRead.$D(this.element);
   },
-  read: function(){
-    var read_ahead_subs = this.subs.slice(this.current+1, this.current+iRead.Config['prefetch_num']);
-    read_ahead_subs.forEach(function(feed){
-      feed.create();
+  clear_feed: function(){
+    this.subs && this.subs.forEach(function(feed){
+      feed.del();
     });
+  },
+  update: function(){
+  },
+  update_feed: function(){
+  },
+  read: function(){
+    var read_ahead_subs = this.subs.slice(this.current+1, this.current+1+iRead.Config['prefetch_num']);
+    return Chain.list(
+      read_ahead_subs.map(function(feed){
+        console.info(feed.title + ' reading');
+        return feed.read();
+      })
+    );
   }
 }
 iRead.Ready.add(iRead.List);
@@ -825,14 +1424,20 @@ iRead.Pin = {
   check: function(link){
     return (link in this.hash);
   },
+  ready: function(){
+    iRead.$('main').appendChild(this.element);
+  },
   set: function(text){
     this.pins = eval(text);
     this.pins.forEach(function(pin){
       this.hash[pin.link] = this.create_pinlist(pin);
     }, this);
   },
+  clear: function(){
+    this.pins = [];
+    this.hash = {};
+  },
   create: function(){
-    iRead.$('main').appendChild(this.element);
   },
   create_pinlist: function(pin){
     var body   = this.item_body.cloneNode();
@@ -857,6 +1462,7 @@ iRead.Pin = {
     iRead.DOM.removeClass(this.element, 'selected');
   }
 }
+iRead.Ready.add(iRead.Pin);
 
 // iRead feed
 iRead.Feed = new iRead.Class({
@@ -864,24 +1470,30 @@ iRead.Feed = new iRead.Class({
     Object.update(this, obj);
     this.states = {
       index  : 0,
-      next   : 20,
-      done   : false,
-      load   : false,
+      next   : (200 < iRead.Config["max_view"])? 200 :(iRead.Config["max_view"] || 20),
+      read   : false,
       touched: false,
-      all    : false
+      all    : false,
+      load  : false,
+      close : false
     };
-    this.elements = {};
+    this.elements = {
+      feedlist: null,
+      element : null
+    };
     this.signals = [];
   },
   elements: {
+    element: iRead.$N('div', {'id': 'feed'}),
     header: iRead.$N('div', {'class': 'header'}),
     footer: iRead.$N('div', {'class': 'footer'}, 'more'),
     content: iRead.$N('div', {'class': 'content'})
   },
-  // FeedのserviceはListの傀儡. instanceは各Feedの管理.
+  // FeedのserviceはList. instanceは各Feedの管理.
   // 将来的にListの一部機能をFeedに譲渡するかも.
   create: function(reload){
-    return iRead.List.create_feed(reload);
+    reload || iRead.$('main').appendChild(this.elements.element);
+    return iRead.List.create_feed();
   },
   show: function(id){
     return iRead.List.show_feed(id);
@@ -895,33 +1507,20 @@ iRead.Feed = new iRead.Class({
   prev: function(){
     return iRead.List.prev();
   },
+  clear: function(){
+    iRead.$D(this.elements.element);
+    return iRead.List.clear_feed();
+  },
   touch: function(){
     return iRead.List.touch_feed();
+  },
+  ready: function(){
+    iRead.$('main').appendChild(this.elements.element);
   }
   },{
   ahead: null,
-  create_footer: function(){
-    var self = this;
-    this.elements.footer = iRead.Feed.elements.footer.cloneNode(true);
-    this.elements.footer.setAttribute('id', 'footer_'+this.subscribe_id);
-    var signal = iRead.Event.connect('click', function(){
-      self.add();
-    }, this.elements.footer, false);
-    this.signals.push(signal);
-    return this.elements.footer;
-  },
-  create_header: function(){
-    this.elements.header = iRead.Feed.elements.header.cloneNode(true);
-    this.elements.header
-      .appendChild(iRead.$CF('<img class="icon" src="'+this.icon+'"/><h2>'+this.title+'</h2>'));
-    return this.elements.header;
-  },
-  create_content: function(){
-    this.elements.content = iRead.Feed.elements.content.cloneNode(true);
-    this.elements.content.setAttribute('id', 'content_'+this.subscribe_id);
-    return this.elements.content;
-  },
   create_feedlist: function(){
+    if(this.elements.feedlist) return this.elements.feedlist;
     this.elements.feedlist = iRead.$CF('<div class="feed_item item"><img class="icon" src="'+this.icon+'"><span class="feed_title">'+this.title+' ('+this.unread_count+')</span></div>').firstChild;
     var self = this;
     this.signals.push(
@@ -932,26 +1531,39 @@ iRead.Feed = new iRead.Class({
     return this.elements.feedlist;
   },
   create_feedcontent: function(index){
+    if(this.elements.element) return this.elements.element;
+    var self = this;
+    // create feed footer
+    this.elements.footer = iRead.Feed.elements.footer.cloneNode(true);
+    this.elements.footer.setAttribute('id', 'footer_'+this.subscribe_id);
+    this.signals.push(
+      iRead.Event.connect('click', function(){
+        self.add();
+      }, this.elements.footer, false)
+    );
+    // create feed header
+    this.elements.header = iRead.Feed.elements.header.cloneNode(true);
+    this.elements.header.appendChild(iRead.$CF('<img class="icon" src="'+this.icon+'"/><h2>'+this.title+'</h2>'));
+    // create feed content
+    this.elements.content = iRead.Feed.elements.content.cloneNode(true);
+    this.elements.content.setAttribute('id', 'content_'+this.subscribe_id);
+
     this.elements.element = iRead.$N('div', {
       'id'   : 'feed_'+this.subscribe_id,
       'class': 'list'
     }, [
-      this.create_header(),
-      this.create_content(),
-      this.create_footer()
+      this.elements.header,
+      this.elements.content,
+      this.elements.footer
     ]);
     this.elements.element.style.zIndex = (10000 - index);
     return this.elements.element;
   },
-  create: function(){
-    this.read();
-    this.append();
-  },
   read: function(){
     // console.info('READ');
-    if(this.states.load) return;
-    this.states.load = true;
-    this.ahead = new XHR(iRead.api.feed, {
+    if(this.states.read) return false;
+    this.states.read = true;
+    var ret = this.ahead = new XHR(iRead.api.feed, {
       method: 'POST',
       data: {
         subscribe_id: this.subscribe_id,
@@ -969,9 +1581,10 @@ iRead.Feed = new iRead.Class({
     .error(function(e){
       console.info(e);
     });
+    return ret;
   },
   select: function(){
-    iRead.View.show_feed(this.subscribe_id);
+    return iRead.View.show_feed(this.subscribe_id);
   },
   add: function(){
     var df = iRead.$DF();
@@ -985,27 +1598,47 @@ iRead.Feed = new iRead.Class({
     .slice(this.states.index, this.states.next)
     .forEach(function(item, index){
       df.appendChild(item.create());
-    });
+    }, this);
     this.states.index = this.states.next;
-    this.states.next += 20;
+    this.states.next += (iRead.Config["items_per_page"] || 20),
     this.elements.content.appendChild(df);
   },
-  append: function(){
-    if(this.states.done) return false;
-    this.states.done = true;
-    if(this.ahead){
-      this.ahead.add(function(){
-        this.add();
-      }, this);
-    } else {
-      this.add();
+  close: function(){
+    iRead.DOM.removeClass(this.elements.element, 'selected');
+    if(!this.states.close){
+      this.states.close = true;
+      if(this.ahead){
+        return this.ahead.add(function(){
+          this.touch('onclose');
+        }, this);
+      } else {
+        return this.touch('onclose');
+      }
     }
   },
-  touch: function(){
-    if(this.states.touched) return false;
+  load: function(){
+    iRead.DOM.addClass(this.elements.element, 'selected');
+    this.read();
+    if(!this.states.load){
+      this.states.load = true;
+      if(this.ahead){
+        return this.ahead.add(function(){
+          this.add();
+          this.touch('onload');
+        }, this);
+      } else {
+        this.add();
+        return this.touch('onload');
+      }
+    }
+    return false;
+  },
+  touch: function(state){
+    if(state != iRead.Config["touch_when"] || this.states.touched) return false;
+    console.info('TOUCH');
     this.states.touched = true;
     iRead.DOM.addClass(this.elements.feedlist, 'touched');
-    iRead.API.touch(this.subscribe_id)
+    return iRead.API.touch(this.subscribe_id)
     .error(function(e){
       if(e == iRead.error.api){
         this.states.touched = false;
@@ -1014,15 +1647,15 @@ iRead.Feed = new iRead.Class({
     }, this);
   },
   del: function(){
-    this.items.forEach(function(item){
+    this.items && this.items.forEach(function(item){
       item.del();
     });
-    this.signals.forEach(function(signal){
+    this.signals && this.signals.forEach(function(signal){
       iRead.Event._disconnect(signal);
     });
   }
 });
-// iRead.Ready.add(iRead.Feed);
+iRead.Ready.add(iRead.Feed);
 
 
 // iRead item
@@ -1074,7 +1707,8 @@ iRead.Item = new iRead.Class({
   add_filter: function(func){
     (iRead.isArray(func))
       ? func.forEach(function(f){ this.add_filter(f) }, this)
-      : this.filters.push(f);
+      : this.filters.push(func);
+    return func;
   }
   },{
   filter: function(text){
@@ -1090,7 +1724,7 @@ iRead.Item = new iRead.Class({
   },
   del: function(){
     // remove listeners
-    this.signals.forEach(function(signal){
+    this.signals && this.signals.forEach(function(signal){
       iRead.Event._disconnect(signal);
     });
   },
@@ -1128,17 +1762,18 @@ iRead.Item = new iRead.Class({
   add_pin: function(){
     if(iRead.Pin.pins.length == 100) return false;
     iRead.DOM.addClass(this.elements.item, 'pinned');
-    iRead.Pin.add(this);
+    return iRead.Pin.add(this);
   },
   remove_pin: function(){
     iRead.DOM.removeClass(this.elements.item, 'pinned');
-    iRead.Pin.remove(this);
+    return iRead.Pin.remove(this);
   }
 });
 iRead.Ready.add(iRead.Item);
 
 iRead.Widget = {
   list: [],
+  channel_list: [],
   widget: iRead.$N('div', {'class': 'widget'}),
   ready: function(){
     // datetime widget
@@ -1212,13 +1847,29 @@ iRead.Widget = {
     };
     this.add(fullfeed);
   },
-  add: function(f){
-    this.list.push(f);
-    return f;
+  add: function(obj){
+    this.list.push(obj);
+    return obj;
+  },
+  add_channel: function(obj){
+    this.channel_list.push(obj);
+    return obj;
   },
   create: function(item){
     var df = iRead.$DF();
     this.list.forEach(function(w){
+      var content = w.create(item);
+      if(content){
+        var widget = this.widget.cloneNode();
+        widget.appendChild(content);
+        df.appendChild(widget);
+      }
+    }, this);
+    return df;
+  },
+  create_channel: function(feed){
+    var df = iRead.$DF();
+    this.channel_list.forEach(function(w){
       var content = w.create(item);
       if(content){
         var widget = this.widget.cloneNode();
@@ -1260,6 +1911,7 @@ iRead.FullFeed = {
   ],
   config: {},
   reg: null,
+  enable: false,
   filters: [
     // Filter: Remove Script and H2 tags
     (function(nodes, item){
@@ -1322,6 +1974,10 @@ iRead.FullFeed = {
     });
     var reg = new RegExp(exps.join('|'));
     this.reg = reg;
+  },
+  clear: function(){
+    this.config = {};
+    this.reg = null;
   },
   parse: function(res, item, data){
     try {
@@ -1500,8 +2156,13 @@ Chain = new iRead.Class({
         value = [];
     list.forEach(function(d, index){
       if(!(d instanceof Chain)){
-        var f = d;
-        d = Chain.add(function(){ return f.call(this) }, t);
+        if(typeof d == 'function'){
+          var f = d;
+          d = Chain.add(function(){ return f.call(this) }, t);
+        } else {
+          var f = d;
+          d = Chain.add(function(){ return f }, t);
+        }
       }
       d.callbacks(
         function(res){
