@@ -659,6 +659,26 @@ iRead.ConfigManager = new iRead.Class({
       type: 'box',
       data: [
         {
+          key: 'use_limit_subs',
+          text: 'Limit Number of My Feeds',
+          type: 'select',
+          data: [
+            ['Set limit', true],
+            ['Display all', false],
+          ]
+        },
+        {
+          key: 'limit_subs',
+          text: 'Number of My Feeds to show',
+          type: 'input',
+          data: 'feeds'
+        }
+      ]
+    },
+    {
+      type: 'box',
+      data: [
+        {
           type: 'button',
           text: 'save',
           slot: function(e){
@@ -714,11 +734,11 @@ iRead.ConfigManager = new iRead.Class({
 
     iRead.ConfigManager.setable_config.forEach(function(data){
       var element = this['create_'+data.type](data);
-      console.info(data);
       df.appendChild(element);
     }, this);
     fieldset.appendChild(df);
     form.appendChild(fieldset);
+    this.form = form;
     iRead.Dialog.create(form, 'Config');
     iRead.Dialog.show();
   },
@@ -732,19 +752,25 @@ iRead.ConfigManager = new iRead.Class({
     this.states.save = true;
     this.clear_signal();
     var self = this;
-    var form = iRead.$('config_form');
+    var form = this.form;
     return SQL(iRead.db, function(tr){
-      iRead.ConfigManager.setable_config.forEach(function(data){
-        console.info(form[data.key] && form[data.key].value);
+      function setter(data){
         var key = data.key;
-        if(!key) return;
+        if(!key){
+          if(data.type == 'box'){
+            return data.data.forEach(setter);
+          } else {
+            return;
+          }
+        }
         var val = form[key].value;
         if(key && val){
-          this.set(key, val);
+          self.set(key, val);
           tr.del('config', {'key': key});
           tr.insert('config', {'key': key, 'value': val});
         }
-      }, self);
+      }
+      iRead.ConfigManager.setable_config.forEach(setter);
     })
     .error(function(e){
       console.info(e);
@@ -814,18 +840,38 @@ iRead.ConfigManager = new iRead.Class({
 iRead.API = {
   // functions for loading
   feeds: function(){
-    return XHR(iRead.api.subs, {
-      method: 'POST',
-      data  : {
-        ApiKey   : iRead.Config.ApiKey,
-        type     : iRead.type,
-        cookie   : iRead.cookie,
-        unread   : (iRead.Config["show_all"]? 0 : 1),
-        from_id  : '0',
-        limit    : iRead.Config.limit_subs
-    }})
-    .add(function(res){
-      this.List.set(res.responseText);
+    var list = [];
+    var tmp = [];
+    var use_limit = iRead.Config.use_limit_subs;
+    function request(from_id, limit){
+      return XHR(iRead.api.subs, {
+            method: 'POST',
+            data  : {
+              ApiKey   : iRead.Config.ApiKey,
+              type     : iRead.type,
+              cookie   : iRead.cookie,
+              unread   : (iRead.Config["show_all"]? 0 : 1),
+              from_id  : from_id,
+              limit    : limit
+      }})
+      .add(function(res){
+        tmp = eval(res.responseText);
+        list = list.concat(tmp);
+        if(use_limit) return list;
+        if(tmp.length < limit){
+          return list;
+        } else {
+          var next = 200;
+          var last = tmp[tmp.length-1];
+          var from_id = last.subscribe_id;
+          return request(from_id, next);
+        }
+      });
+    }
+
+    return request(0, iRead.Config.limit_subs)
+    .add(function(arr){
+      this.List.set(arr);
     }, iRead)
     .error(function(e){
       console.info(e);
@@ -1106,8 +1152,8 @@ iRead.List = {
     '★★★★☆',
     '★★★★★'
   ],
-  set: function(text){
-    this.subs = eval(text).map(function(sub){
+  set: function(list){
+    this.subs = list.map(function(sub){
       return new iRead.Feed(sub);
     });
   },
