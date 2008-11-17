@@ -85,7 +85,7 @@ iRead.api = {
   url:    'http://reader.appjet.net/',
 };
 // iRead API
-['config', 'subs', 'pins', 'feed', 'login', 'access', 'touch']
+['config', 'subs', 'pins', 'feed', 'login', 'access', 'touch', 'wedata']
 .forEach(function(name){
   iRead.api[name] = iRead.api.url+name;
 });
@@ -916,8 +916,12 @@ iRead.API = {
   fullfeed: function(){
     if(iRead.FullFeed.enable) return (function(){ return true });
     iRead.FullFeed.enable = true;
-    return JSONP('http://wedata.net/databases/LDRFullFeed/items.json')
-    .add(function(items){
+    return XHR(iRead.api.wedata, {
+      method: 'POST',
+    })
+    .add(function(res){
+      var items = eval(res.responseText);
+      if(items.ErrorCode) throw iRead.error.api;
       this.FullFeed.set(items);
     }, iRead)
     .error(function(e){

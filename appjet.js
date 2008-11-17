@@ -1,6 +1,7 @@
 /* appjet:version 0.1 */
 import("storage");
 import("dlog");
+import("cron");
 // import("lib-uuid");
 
 var API = {
@@ -8,16 +9,31 @@ var API = {
     config: 'http://reader.livedoor.com/api/config/load',
     subs:   'http://reader.livedoor.com/api/subs',
     pins:   'http://reader.livedoor.com/api/pin',
-    feed:   'http://reader.livedoor.com/api/unread',
+    feed:   'http://reader.livedoor.com/api/unread?prefetch',
     touch:  'http://reader.livedoor.com/api/touch_all'
   },
   FLDR: {
     config: 'http://fastladder.com/api/config/load',
     subs:   'http://fastladder.com/api/subs',
     pins:   'http://fastladder.com/api/pin',
-    feed:   'http://fastladder.com/api/unread',
+    feed:   'http://fastladder.com/api/unread?prefetch',
     touch:  'http://fastladder.com/api/touch_all'
   }
+}
+
+//var result = schedule(new Date("Nov 17, 2008"), "/touch");
+//var result = scheduleRepeating(new Date("Nov 17, 2008"), 1440, "/wedata");
+//unscheduleAll();
+function cron_wedata(){
+  try{
+    var res = "(" + wget("http://wedata.net/databases/LDRFullFeed/items.json") + ")";
+    storage.wedata = res;
+  } catch(e){}
+}
+
+function get_wedata(){
+  if(!storage.wedata)  storage.wedata = "(" + wget("http://wedata.net/databases/LDRFullFeed/items.json") + ")";
+  print(!!storage.wedata);
 }
 
 var Template = {
@@ -33,9 +49,38 @@ var Template = {
 </head>
 <body>
   <div id="topbar" class="toolbar topBar">
-    <h1 id="pageTitle">Title</h1>
-    <div id="prev" class="button indexButton"><span>Pin</span></div>
-    <div id="next" class="button indexButton"><span>Subs</span></div>
+    <h1 id="pageTitle">iReader</h1>
+    <div id="pins" class="button indexButton"><span>Pin</span></div>
+    <div id="subs" class="button indexButton"><span>Subs</span></div>
+    <div id="config" class="button indexRightButton"><img src="http://utatane.tea.googlepages.com/cog.png" /></div>
+    <div id="reload" class="button indexRightButton"><img src="http://utatane.tea.googlepages.com/arrow_refresh.png" /></div>
+  </div>
+  <div id="main">
+  </div>
+  <div id="overlay">
+  </div>
+  <div id="dialog">
+    <span id="dialog_title"></span>
+    <div id="dialog_content">
+    </div>
+  </div>
+</body>
+""",
+  test: """
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link href="http://utatane.tea.googlepages.com/reader.css" rel="stylesheet" />
+  <script type="text/javascript" src="http://utatane.tea.googlepages.com/test-iLDR.js"></script>
+  <title>iReader</title>
+</head>
+<body>
+  <div id="topbar" class="toolbar topBar">
+    <h1 id="pageTitle">iReader</h1>
+    <div id="pins" class="button indexButton"><span>Pin</span></div>
+    <div id="subs" class="button indexButton"><span>Subs</span></div>
     <div id="config" class="button indexRightButton"><img src="http://utatane.tea.googlepages.com/cog.png" /></div>
     <div id="reload" class="button indexRightButton"><img src="http://utatane.tea.googlepages.com/arrow_refresh.png" /></div>
   </div>
@@ -132,7 +177,6 @@ Unit.isValid = function(args){
 function get_main(){
   // response.setHeader("Content-Type", "text/html");
   response.setContentType("text/html; charset=UTF-8");
-  dlog.info(isMobile(request));
   page.setMode('plain');
   response.setStatusCode(200);
   response.write(Template.main);
@@ -165,6 +209,13 @@ function post_feed(){
     ApiKey: request.params.ApiKey,
     subscribe_id: request.params.subscribe_id,
   }
+
+  if(type == 'LDR')
+    cookie = cookie + ';reader_sid=' + params.ApiKey;
+  else if(type == 'FLDR'){
+    var ex = extract_cookie(cookie);
+    params.ApiKey = ex['reader_sid'];
+  }
   if(cookie && type && params){
     //response.setHeader("Content-Type", "text/plain");
     response.setContentType("text/plain; charset=UTF-8");
@@ -176,6 +227,7 @@ function post_feed(){
       headers:{
         cookie: cookie,
     }});
+    dlog.info(req);
     response.write("("+req+")");
   }
 }
@@ -185,6 +237,13 @@ function post_subs(){
   var type   = request.params.type;
   var params = {
     ApiKey: request.params.ApiKey,
+  }
+
+  if(type == 'LDR')
+    cookie = cookie + ';reader_sid=' + params.ApiKey;
+  else if(type == 'FLDR'){
+    var ex = extract_cookie(cookie);
+    params.ApiKey = ex['reader_sid'];
   }
   var query = ["unread", "from_id", "limit"]
     .map(function(n){
@@ -300,7 +359,6 @@ function post_touch(){
     response.setContentType("text/plain; charset=UTF-8");
     page.setMode('plain');
     response.setStatusCode(200);
-    dlog.info(params);
     var req = wpost(API[type]["touch"],
       params
       ,{
@@ -340,6 +398,34 @@ function post_login(){
       type  : 'ERROR'
       })+")"));
   }
+}
+
+function get_cron(){
+  try{
+      var res = "(" + wget("http://wedata.net/databases/LDRFullFeed/items.json") + ")";
+      storage.wedata = res;
+  } catch(e){}
+  print(listAll());
+  print("Wedata : " + !!storage.wedata);
+}
+
+function get_test(){
+  // response.setHeader("Content-Type", "text/html");
+  response.setContentType("text/html; charset=UTF-8");
+  page.setMode('plain');
+  response.setStatusCode(200);
+  response.write(Template.test);
+}
+
+function post_wedata(){
+    response.setContentType("text/plain; charset=UTF-8");
+    response.setStatusCode(200);
+    page.setMode('plain');
+    if(storage.wedata){
+      response.write(storage.wedata);
+    } else {
+      response.write('({ErrorCode: 1, isSuccess: 0})');
+    }
 }
 
 function parse_cookie(cookie){
