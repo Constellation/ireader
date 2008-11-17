@@ -863,7 +863,7 @@ iRead.API = {
         } else {
           var next = 200;
           var last = tmp[tmp.length-1];
-          var from_id = last.subscribe_id;
+          var from_id = last.subscribe_id-0+1;
           return request(from_id, next);
         }
       });
