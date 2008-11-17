@@ -25,10 +25,10 @@ var API = {
 //var result = scheduleRepeating(new Date("Nov 17, 2008"), 1440, "/wedata");
 //unscheduleAll();
 function cron_wedata(){
-  try{
-    var res = "(" + wget("http://wedata.net/databases/LDRFullFeed/items.json") + ")";
-    storage.wedata = res;
-  } catch(e){}
+    try{
+      var res = "(" + wget("http://wedata.net/databases/LDRFullFeed/items.json") + ")";
+      storage.wedata = res;
+    } catch(e){}
 }
 
 function get_wedata(){
@@ -227,7 +227,6 @@ function post_feed(){
       headers:{
         cookie: cookie,
     }});
-    dlog.info(req);
     response.write("("+req+")");
   }
 }
