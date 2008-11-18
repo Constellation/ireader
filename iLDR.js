@@ -94,6 +94,7 @@ iRead.error = {
   'html'   : new Error('HTML Parse Error'),
   'line'   : new Error('Network Connection Error'),
   'login'  : new Error('Login Error'),
+  'update' : new Error('Reader Update'),
   'fatal'  : new Error('Fatal Error')
 }
 
@@ -386,6 +387,8 @@ iRead.load = function(){
     if(!this.cookie || !this.type) throw iRead.error.login;
     this.Config = new iRead.ConfigManager(this.LocalConfig);
     this.Cookie.create(this.cookie);
+    this.ApiKey = this.Cookie["reader_sid"];
+    if(!this.ApiKey) throw iRead.error.update;
     // get config and all contents
     this.Dialog.message({
       message: 'loading original config...',
@@ -429,6 +432,19 @@ iRead.load = function(){
   }, this)
   .error(function(e){
     if(e == iRead.error.login) this.login();
+    if(e == iRead.error.update){
+      Chain.add(function(){
+        this.Dialog.message({
+          message: 'iReader updated. Please login again.',
+          title  : 'Reader Update',
+          time   : 2
+        });
+      }, iRead)
+      .later(2)
+      .add(function(){
+        this.login();
+      }, iRead);
+    }
     else throw e;
   }, this);
 }
@@ -472,6 +488,12 @@ iRead.start = function(){
   });
 }
 iRead.start.flag = false;
+
+iRead.del = function(){
+  return SQL(this.db, function(tr){
+    tr.delAll('config');
+  });
+}
 
 iRead.login = function(){
   this.Dialog.create(this.login_form.cloneNode(true), 'Login');
@@ -780,7 +802,7 @@ iRead.ConfigManager = new iRead.Class({
       iRead.Dialog.hide();
       this.states.save = false;
       iRead.View.reload();
-      console.info('Config Set');
+      // console.info('Config Set');
     }, this)
     .error(function(e){
       console.info(e);
@@ -847,7 +869,7 @@ iRead.API = {
       return XHR(iRead.api.subs, {
             method: 'POST',
             data  : {
-              ApiKey   : iRead.Config.ApiKey,
+              ApiKey   : iRead.ApiKey,
               type     : iRead.type,
               cookie   : iRead.cookie,
               unread   : (iRead.Config["show_all"]? 0 : 1),
@@ -900,7 +922,7 @@ iRead.API = {
     return XHR(iRead.api.pins, {
       method: 'POST',
       data  : {
-        ApiKey   : iRead.Config.ApiKey,
+        ApiKey   : iRead.ApiKey,
         type     : iRead.type,
         cookie   : iRead.cookie,
         com      : 'all'
@@ -949,7 +971,7 @@ iRead.API = {
     return XHR(iRead.api.touch, {
       method: 'POST',
       data  : {
-        ApiKey        : iRead.Config.ApiKey,
+        ApiKey        : iRead.ApiKey,
         type          : iRead.type,
         cookie        : iRead.cookie,
         subscribe_id  : id
@@ -1006,7 +1028,7 @@ iRead.View = {
     iRead.List.sort(mode);
   },
   config: function(){
-    console.info('CONFIG');
+    // console.info('CONFIG');
     window.scrollTo(0, 0);
     return Chain.add(function(){
       iRead.List.hide();
@@ -1014,7 +1036,7 @@ iRead.View = {
       return iRead.Feed.hide();
     })
     .add(function(){
-      console.info('HIDE');
+      // console.info('HIDE');
       iRead.Config.create();
     })
     .error(function(e){
@@ -1183,7 +1205,7 @@ iRead.List = {
     this.touch_feed();
     var current = this.subs[this.current];
     var next    = this.subs[++this.current];
-    console.info('NEXT');
+    // console.info('NEXT');
     return Chain.add(function(){
       current.close();
       next.read();
@@ -1196,7 +1218,7 @@ iRead.List = {
     this.touch_feed();
     var current = this.subs[this.current];
     var prev    = this.subs[--this.current];
-    console.info('PREV');
+    // console.info('PREV');
     return Chain.add(function(){
       current.close();
       prev.read();
@@ -1410,7 +1432,7 @@ iRead.List = {
     var read_ahead_subs = this.subs.slice(this.current+1, this.current+1+iRead.Config['prefetch_num']);
     return Chain.list(
       read_ahead_subs.map(function(feed){
-        console.info(feed.title + ' reading');
+        // console.info(feed.title + ' reading');
         return feed.read();
       })
     );
@@ -1441,7 +1463,7 @@ iRead.Pin = {
       data: {
         link        : item.link,
         title       : item.title,
-        ApiKey      : iRead.Config.ApiKey,
+        ApiKey      : iRead.ApiKey,
         cookie      : iRead.cookie,
         type        : iRead.type,
         com         : 'add'
@@ -1464,7 +1486,7 @@ iRead.Pin = {
         method: 'POST',
         data: {
           link        : item.link,
-          ApiKey      : iRead.Config.ApiKey,
+          ApiKey      : iRead.ApiKey,
           cookie      : iRead.cookie,
           type        : iRead.type,
           com         : 'remove'
@@ -1617,7 +1639,7 @@ iRead.Feed = new iRead.Class({
       method: 'POST',
       data: {
         subscribe_id: this.subscribe_id,
-        ApiKey      : iRead.Config.ApiKey,
+        ApiKey      : iRead.ApiKey,
         cookie      : iRead.cookie,
         type        : iRead.type
       }
@@ -1685,7 +1707,7 @@ iRead.Feed = new iRead.Class({
   },
   touch: function(state){
     if(state != iRead.Config["touch_when"] || this.states.touched) return false;
-    console.info('TOUCH');
+    // console.info('TOUCH');
     this.states.touched = true;
     iRead.DOM.addClass(this.elements.feedlist, 'touched');
     return iRead.API.touch(this.subscribe_id)

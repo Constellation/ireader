@@ -118,7 +118,16 @@ Unit.LDR = function(){
       headers: {
     }});
     var cookie = req.headers["Set-Cookie"];
-    return (cookie && parse_cookie(cookie));
+    var cookie_string = (cookie && parse_cookie(cookie));
+    url = 'http://reader.livedoor.com/reader/'
+    var req2 = wget(url, {}, {
+      complete: true,
+      followRedirects: false,
+      headers: {
+        cookie: cookie_string
+    }});
+    var cookie2 = req2.headers["Set-Cookie"];
+    return parse_cookie(cookie.concat(cookie2));
 }
 
 Unit.FLDR = function(){
@@ -209,11 +218,10 @@ function post_feed(){
     ApiKey: request.params.ApiKey,
     subscribe_id: request.params.subscribe_id,
   }
-
-  if(type == 'LDR')
-    cookie = cookie + ';reader_sid=' + params.ApiKey;
-  else if(type == 'FLDR'){
-    var ex = extract_cookie(cookie);
+  var ex = extract_cookie(cookie);
+  if(type == 'LDR'){
+    if(!ex['reader_sid']) cookie = cookie + ';reader_sid=' + params.ApiKey;
+  } else if(type == 'FLDR'){
     params.ApiKey = ex['reader_sid'];
   }
   if(cookie && type && params){
@@ -226,6 +234,7 @@ function post_feed(){
       ,{
       headers:{
         cookie: cookie,
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
     }});
     response.write("("+req+")");
   }
@@ -237,11 +246,10 @@ function post_subs(){
   var params = {
     ApiKey: request.params.ApiKey,
   }
-
-  if(type == 'LDR')
-    cookie = cookie + ';reader_sid=' + params.ApiKey;
-  else if(type == 'FLDR'){
-    var ex = extract_cookie(cookie);
+  var ex = extract_cookie(cookie);
+  if(type == 'LDR'){
+    if(!ex['reader_sid']) cookie = cookie + ';reader_sid=' + params.ApiKey;
+  } else if(type == 'FLDR'){
     params.ApiKey = ex['reader_sid'];
   }
   var query = ["unread", "from_id", "limit"]
@@ -276,10 +284,10 @@ function post_pins(){
     params.title = request.params.title;
     case 'remove':
     params.link = request.params.link;
-    if(type == 'LDR')
-      cookie = cookie + ';reader_sid=' + params.ApiKey;
-    else if(type == 'FLDR'){
-      var ex = extract_cookie(cookie);
+    var ex = extract_cookie(cookie);
+    if(type == 'LDR'){
+      if(!ex['reader_sid']) cookie = cookie + ';reader_sid=' + params.ApiKey;
+    } else if(type == 'FLDR'){
       params.ApiKey = ex['reader_sid'];
     }
     case 'all':
@@ -348,10 +356,10 @@ function post_touch(){
     ApiKey: request.params.ApiKey,
     subscribe_id: request.params.subscribe_id,
   }
-  if(type == 'LDR')
-    cookie = cookie + ';reader_sid=' + params.ApiKey;
-  else if(type == 'FLDR'){
-    var ex = extract_cookie(cookie);
+  var ex = extract_cookie(cookie);
+  if(type == 'LDR'){
+    if(!ex['reader_sid']) cookie = cookie + ';reader_sid=' + params.ApiKey;
+  } else if(type == 'FLDR'){
     params.ApiKey = ex['reader_sid'];
   }
   if(cookie && type && params){
@@ -363,6 +371,7 @@ function post_touch(){
       ,{
       headers:{
         cookie: cookie,
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
     }});
     response.write("("+req+")");
   }
