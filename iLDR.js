@@ -431,8 +431,9 @@ iRead.load = function(){
     }, this);
   }, this)
   .error(function(e){
-    if(e == iRead.error.login) this.login();
-    if(e == iRead.error.update){
+    if(e == iRead.error.login){
+      this.login();
+    } else if(e == iRead.error.update){
       Chain.add(function(){
         this.Dialog.message({
           message: 'iReader updated. Please login again.',
@@ -444,8 +445,7 @@ iRead.load = function(){
       .add(function(){
         this.login();
       }, iRead);
-    }
-    else throw e;
+    } else throw e;
   }, this);
 }
 
