@@ -119,7 +119,7 @@ Unit.LDR = function(){
     }});
     var cookie = req.headers["Set-Cookie"];
     var cookie_string = (cookie && parse_cookie(cookie));
-    url = 'http://reader.livedoor.com/reader/'
+    url = (this.args.mobile)? "http://reader.livedoor.com/lite/" : 'http://reader.livedoor.com/reader/';
     var req2 = wget(url, {}, {
       complete: true,
       followRedirects: false,
@@ -127,7 +127,12 @@ Unit.LDR = function(){
         cookie: cookie_string
     }});
     var cookie2 = req2.headers["Set-Cookie"];
-    return parse_cookie(cookie.concat(cookie2));
+    if(cookie2 && cookie){
+      cookie = cookie.concat(cookie2);
+    }
+    if(cookie){
+      return parse_cookie(cookie);
+    }
 }
 
 Unit.FLDR = function(){
@@ -385,6 +390,7 @@ function post_login(){
     openid   : trim(request.params["openid"] || ""),
     mobile   : isMobile(request)
   }
+  dlog.info('login API');
   if(!Unit.isValid(args)) return;
 
   var unit = new Unit(args, true);

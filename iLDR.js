@@ -438,7 +438,6 @@ iRead.load = function(){
         this.Dialog.message({
           message: 'iReader updated. Please login again.',
           title  : 'Reader Update',
-          time   : 2
         });
       }, iRead)
       .later(2)
@@ -455,6 +454,8 @@ iRead.start = function(){
   else this.start.flag = true;
   this.Dialog.hide();
   var form = this.$('login');
+  //console.info('id: ['+form.reader_id.value+']');
+  //console.info('Password: ['+form.reader_password.value+']');
   return XHR(this.api.login, {
     method: 'POST',
     data  : {
@@ -496,8 +497,15 @@ iRead.del = function(){
 }
 
 iRead.login = function(){
-  this.Dialog.create(this.login_form.cloneNode(true), 'Login');
-  this.Dialog.show();
+  return SQL(this.db, function(tr){
+    tr.del('config', {'key': 'cookie'});
+    tr.del('config', {'key': 'type'  });
+//    tr.delAll('config');
+  })
+  .add(function(){
+    this.Dialog.create(this.login_form.cloneNode(true), 'Login');
+    this.Dialog.show();
+  }, this);
 }
 
 iRead.logout = function(){
