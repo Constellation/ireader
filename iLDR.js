@@ -96,6 +96,10 @@ iRead.error = {
   'update' : new Error('Reader Update'),
   'fatal'  : new Error('Fatal Error')
 }
+iRead.isMobile = (function(){
+  var u = navigator.userAgent;
+  return !!((~u.indexOf('AppleWebKit')) && (~u.indexOf('Mobile')));
+})();
 
 // utility functions
 Class = iRead.Class = function(cl, pr){
@@ -292,14 +296,15 @@ iRead.ready = function(){
     }
   }, window, false);
   (function(){
-    var hold = 100;
+    var hold = 200;
     var list = iRead.List;
     Ev.connect('scroll', function(e){
       if(View.mode != 'feed') return;
       var current = list.subs[list.current];
       if(current && current.states.read && !current.ahead){
-        var height = (document.documentElement.scrollHeight - document.documentElement.clientHeight);
-        if(height - window.pageYOffset < hold){
+        var height = window.pageYOffset + window.innerHeight;
+        var all = iRead.isMobile? document.documentElement.clientHeight : document.documentElement.scrollHeight;
+        if(all - height < hold){
           current && current.add();
         }
       }
@@ -592,6 +597,20 @@ iRead.Dialog = {
   hide: function(){
     var main_style = this.main.style;
     var overlay_style = this.overlay.style;
+    var counter = 0;
+    return Chain.animation(0, function(){
+      main_style.opacity -= 0.1;
+      if(++counter == 6) return true;
+      else return false;
+    })
+    .add(function(){
+      main_style.display = 'none';
+      overlay_style.display = 'none';
+    })
+    .error(function(e){
+      console.info(e);
+    });
+/*
     return Chain.loop(6, function(){
       main_style.opacity -= 0.1;
       return Chain.later(0.005);
@@ -603,6 +622,7 @@ iRead.Dialog = {
     .error(function(e){
       console.info(e);
     });
+*/
   },
   _message: $N('div', {'class': 'message'}),
   message: function(obj){
@@ -1119,35 +1139,35 @@ iRead.View = {
     });
     // check no touch proc
     function checker(){
-      var list = iRead.Feed.touch_procs.filter(function(proc){ return !!proc });
-      if(list.length){
-        console.info(list[list.length-1]);
-        return list[list.length-1].add(checker);
-      } else {
-        iRead.Feed.clear();
-        iRead.List.clear();
-        self.mode = 'reload';
+      var Feed = iRead.Feed;
+      var index = Feed.touch_table.lastIndexOf(true);
+      if(~index){
+        var proc = Feed.touch_procs[index];
+        if(proc) return proc.add(checker);
+      }
+      iRead.Feed.clear();
+      iRead.List.clear();
+      self.mode = 'reload';
+      iRead.Dialog.message({
+        message: 'Now loading feeds...',
+        title  : 'Subs Notice'
+      });
+      return iRead.API.feeds()
+      .add(function(){
         iRead.Dialog.message({
-          message: 'Now loading feeds...',
+          message: 'done',
+          title  : 'Subs Notice',
+          time   : 0.5
+        });
+        self.start(true);
+      })
+      .error(function(e){
+        console.info(e);
+        iRead.Dialog.message({
+          message: 'API Error',
           title  : 'Subs Notice'
         });
-        return iRead.API.feeds()
-        .add(function(){
-          iRead.Dialog.message({
-            message: 'done',
-            title  : 'Subs Notice',
-            time   : 0.5
-          });
-          self.start(true);
-        })
-        .error(function(e){
-          console.info(e);
-          iRead.Dialog.message({
-            message: 'API Error',
-            title  : 'Subs Notice'
-          });
-        });
-      }
+      });
     }
     return Chain.add(checker);
   },
@@ -1641,6 +1661,7 @@ iRead.Feed = new iRead.Class({
     text: $T('End of Feed')
   },
   touch_procs: [],
+  touch_table: [],
   // FeedのserviceはList. instanceは各Feedの管理.
   // 将来的にListの一部機能をFeedに譲渡するかも.
   create: function(reload){
@@ -1661,6 +1682,7 @@ iRead.Feed = new iRead.Class({
   },
   clear: function(){
     $D(this.elements.element);
+    this.touch_table = [];//procs clear
     this.touch_procs = [];//procs clear
     return iRead.List.clear_feed();
   },
@@ -1793,6 +1815,7 @@ iRead.Feed = new iRead.Class({
     this.states.touched = true;
     var proc = false;
     addClass(this.elements.feedlist, 'touched');
+    iRead.Feed.touch_table.push(true);
     var index = iRead.Feed.touch_procs.push(proc = iRead.API.touch(this.subscribe_id)
     .error(function(e){
       if(e == iRead.error.api){
@@ -1802,7 +1825,8 @@ iRead.Feed = new iRead.Class({
     }, this)
     .both(function(){
       console.info(index);
-      iRead.Feed.touch_procs[index] = false;
+      iRead.Feed.touch_table[index] = false;
+      iRead.Feed.touch_procs[index] = null;
       console.info(iRead.Feed.touch_procs);
     })) - 1;
     return proc;
@@ -2336,6 +2360,16 @@ Chain = new iRead.Class({
       });
     });
     return ret.succeed();
+  },
+  animation: function(n, fun, t){
+    var ret= new Chain();
+    var id = setInterval(function(){
+      if(fun.call(t || this)){
+          clearInterval(id)
+          ret.succeed();
+      }
+    }, n);
+    return ret;
   },
   add: function(fun, t){
     var ret = new Chain();
