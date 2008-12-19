@@ -9,9 +9,8 @@
  *        [ relativeToAbsolutePath ] (c) id:Yuichirou
  *  thanks
  */
-
 var iRead = function(){};
-iRead.VERSION = '0.0.1';
+iRead.VERSION = '0.0.2';
 
 // Object
 Object.prototype.keys = function(){
@@ -99,7 +98,7 @@ iRead.error = {
 }
 
 // utility functions
-iRead.Class = function(cl, pr){
+Class = iRead.Class = function(cl, pr){
   var ret = (cl.initialize)? cl.initialize : function(){};
   pr && (ret.prototype = pr);
   for(var i in cl){
@@ -108,32 +107,32 @@ iRead.Class = function(cl, pr){
   }
   return ret;
 }
-iRead.isString = function(obj){
+isString = iRead.isString = function(obj){
   return (typeof obj == 'string' || obj instanceof String);
 }
-iRead.isNumber = function(obj){
+isNumber = iRead.isNumber = function(obj){
   return (typeof obj == 'number' || obj instanceof Number);
 }
-iRead.isElement = function(obj){
+isElement = iRead.isElement = function(obj){
   return (!!obj.nodeType);
 }
-iRead.isFunction = function(obj){
+isFunction = iRead.isFunction = function(obj){
   return (typeof obj == 'function');
 }
-iRead.isArray = function(obj){
+isArray = iRead.isArray = function(obj){
   return (obj instanceof Array);
 }
-iRead.isRegExp = function(obj){
+isRegExp = iRead.isRegExp = function(obj){
   return (obj instanceof RegExp);
 }
-iRead.isDate = function(obj){
+isDate = iRead.isDate = function(obj){
   return (obj instanceof Date);
 }
-iRead.$ = function(id){
+$ = iRead.$ = function(id){
   return (id in iRead.$.hash && iRead.$.hash[id])? iRead.$.hash[id] : (iRead.$.hash[id] = document.getElementById(id));
 }
 iRead.$.hash = {};
-iRead.$N = function(name, attrs, childs){
+$N = iRead.$N = function(name, attrs, childs){
   var ret = document.createElement(name), value, attr;
   for (attr in attrs){
     if(!attrs.hasOwnProperty(attr)) continue;
@@ -149,11 +148,11 @@ iRead.$N = function(name, attrs, childs){
       });
   return ret;
 }
-iRead.$T = function(text){
+$T = iRead.$T = function(text){
   return document.createTextNode(text);
 }
 // delete
-iRead.$D = function(elm){
+$D = iRead.$D = function(elm){
   var range = document.createRange();
   range.selectNodeContents(elm);
   range.deleteContents();
@@ -161,7 +160,7 @@ iRead.$D = function(elm){
 }
 // remove
 // reuse elements => available
-iRead.$d = function(elm){
+$d = iRead.$d = function(elm){
   var range = document.createRange();
   range.selectNodeContents(elm);
   var df = range.extractContents();
@@ -172,21 +171,21 @@ iRead.$d = function(elm){
   range.detach();
   return elm;
 }
-iRead.$R = function(elm){
+$R = iRead.$R = function(elm){
   return elm.parentNode.removeChild(elm);
 }
 
-iRead.$DF = function(){
+$DF = iRead.$DF = function(){
   return document.createDocumentFragment();
 }
-iRead.$A = function(a){
+$A = iRead.$A = function(a){
   return Array.prototype.slice.call(a);
 }
 // simple version of $X
 // $X(exp);
 // $X(exp, context);
 // @source http://gist.github.com/3242.txt
-iRead.$X = function(exp, context) {
+$X = iRead.$X = function(exp, context) {
   context || (context = document);
   var expr = (context.ownerDocument || context).createExpression(exp, function (prefix) {
     return document.createNSResolver(context.documentElement || context).lookupNamespaceURI(prefix) ||
@@ -220,27 +219,28 @@ iRead.ready = function(){
     return iRead.$CF.range.createContextualFragment(text);
   }
   this.$CF.range = document.createRange()
-  this.$CF.range.selectNode(document.body);
+  this.$CF.range.selectNodeContents(document.body);
   this.body = document.body;
   this.head = document.getElementsByTagName('head')[0];
-  this.login_form = iRead.$CF('<form id="login"><fieldset>id<input type="text" value="" name="reader_id" />pass<input type="password" value="" name="reader_password" /><div><select name="reader_type" size=3><option value="LDR">LDR<option value="FLDR">FLDR</select></div><input type="button" value="Login" onclick="(function(){ iRead.start() })();" /><input type="button" value="DELETE" onclick="(function(){ iRead.del() })();" /></fieldset></form>').firstChild;
+  this.login_form = iRead.$CF('<form id="login"><fieldset><input type="text" value="" name="reader_id"  placeholder="id" /><input type="password" value="" name="reader_password" placeholder="password" /><div><select name="reader_type" size=3><option value="LDR">LDR<option value="FLDR">FLDR</select></div><input type="button" value="Login" onclick="(function(){ iRead.start() })();" /><input type="button" value="DELETE" onclick="(function(){ iRead.del() })();" /></fieldset></form>').firstChild;
   this.hideUrlBar();
   // Connect
-  this.Event.connect("orientationchange", this.hideUrlBar, window, false);
-  this.Event.connect("click", function(){
+  var Ev = this.Event;
+  Ev.connect("orientationchange", this.hideUrlBar, window, false);
+  Ev.connect("click", function(){
     !(iRead.View.mode == 'subs') && iRead.View.show_subs();
   }, this.$('subs'), false);
-  this.Event.connect("click", function(){
+  Ev.connect("click", function(){
     !(iRead.View.mode == 'pins') && iRead.View.show_pins();
   }, this.$('pins'), false);
-  this.Event.connect("click", function(){
+  Ev.connect("click", function(){
     iRead.View.reload();
   }, this.$('reload'), false);
-  this.Event.connect("click", function(){
+  Ev.connect("click", function(){
     iRead.View.config();
   }, this.$('config'), false);
   // for PC Safari debuging and testing
-  this.Event.connect('keypress', function(e){
+  Ev.connect('keypress', function(e){
     var code= e.keyCode || e.charCode;
     var key = String.fromCharCode(code);
     switch(key){
@@ -261,6 +261,20 @@ iRead.ready = function(){
         break;
     }
   }, window, false);
+  (function(){
+    var hold = 500;
+    var list = iRead.List;
+    Ev.connect('scroll', function(e){
+      if(iRead.View.mode != 'feed') return;
+      var current = list.subs[list.current];
+      if(current && current.states.read && !current.ahead){
+        var height = (document.documentElement.scrollHeight - document.documentElement.clientHeight);
+        if(height - window.pageYOffset < hold){
+          current && current.add();
+        }
+      }
+    }, window, false);
+  })();
 }
 
 // iRead Event
@@ -1095,6 +1109,7 @@ iRead.View = {
       return iRead.Feed.hide();
     })
     .add(function(){
+      console.info('ok');
       iRead.List.show();
       this.restore = this.mode;
       this.mode = 'subs';
@@ -1550,7 +1565,8 @@ iRead.Feed = new iRead.Class({
     Object.update(this, obj);
     this.states = {
       index  : 0,
-      next   : (200 < iRead.Config["max_view"])? 200 :(iRead.Config["max_view"] || 20),
+//      next   : (200 < iRead.Config["max_view"])? 200 :(iRead.Config["max_view"] || 5),
+      next   : 5,
       read   : false,
       touched: false,
       all    : false,
@@ -1566,7 +1582,7 @@ iRead.Feed = new iRead.Class({
   elements: {
     element: iRead.$N('div', {'id': 'feed'}),
     header: iRead.$N('div', {'class': 'header'}),
-    footer: iRead.$N('div', {'class': 'footer'}, 'more'),
+    footer: iRead.$N('div', {'class': 'footer'}, 'END OF FEED'),
     content: iRead.$N('div', {'class': 'content'})
   },
   // FeedのserviceはList. instanceは各Feedの管理.
@@ -1601,7 +1617,7 @@ iRead.Feed = new iRead.Class({
   ahead: null,
   create_feedlist: function(){
     if(this.elements.feedlist) return this.elements.feedlist;
-    this.elements.feedlist = iRead.$CF('<div class="feed_item item"><img class="icon" src="'+this.icon+'"><span class="feed_title">'+this.title+' ('+this.unread_count+')</span></div>').firstChild;
+    this.elements.feedlist = iRead.$CF('<div class="feed_item item"><span class="feed_title" style="background: url('+this.icon+') no-repeat left center;">'+this.title+' ('+this.unread_count+')</span></div>').firstChild;
     var self = this;
     this.signals.push(
       iRead.Event.connect('click', function(e){
@@ -1616,14 +1632,9 @@ iRead.Feed = new iRead.Class({
     // create feed footer
     this.elements.footer = iRead.Feed.elements.footer.cloneNode(true);
     this.elements.footer.setAttribute('id', 'footer_'+this.subscribe_id);
-    this.signals.push(
-      iRead.Event.connect('click', function(){
-        self.add();
-      }, this.elements.footer, false)
-    );
     // create feed header
     this.elements.header = iRead.Feed.elements.header.cloneNode(true);
-    this.elements.header.appendChild(iRead.$CF('<img class="icon" src="'+this.icon+'"/><h2>'+this.title+'</h2>'));
+    this.elements.header.appendChild(iRead.$CF('<h2 style="background: url('+this.icon+') no-repeat left center;">'+this.title+'</h2>'));
     // create feed content
     this.elements.content = iRead.Feed.elements.content.cloneNode(true);
     this.elements.content.setAttribute('id', 'content_'+this.subscribe_id);
@@ -1680,7 +1691,7 @@ iRead.Feed = new iRead.Class({
       df.appendChild(item.create());
     }, this);
     this.states.index = this.states.next;
-    this.states.next += (iRead.Config["items_per_page"] || 20),
+    this.states.next += 5,
     this.elements.content.appendChild(df);
   },
   close: function(){
@@ -2030,6 +2041,7 @@ iRead.FullFeed = {
     .filter(function(data){
       try{
         var reg = new RegExp(data.url);
+        data.reg = reg;
       } catch(e) {
         return false;
       }
@@ -2115,7 +2127,7 @@ iRead.FullFeed = {
       var list = this.config[p.type];
       if(!list) return false;
       return list.some(function(data) {
-        var reg = new RegExp(data.url);
+        if(!(reg = data.reg)) return;
         if (reg.test(item.link) || reg.test(item.feed.link)) {
           res = data;
           return true;

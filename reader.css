@@ -198,7 +198,7 @@ body[orient="landscape"] > .topBar > h1 {
 
 #main div.list span.feed_title {
   vertical-align: baseline;
-  margin-left: 20px;
+  padding-left: 25px;
   font-size: 15px;
   font-weight: bold;
   vertical-align: 3px;
@@ -240,6 +240,10 @@ body[orient="landscape"] > .topBar > h1 {
 
 #main div.list div.header * {
   display: inline-block;
+}
+
+#main div.list div.header h2 {
+  padding-left: 25px;
 }
 
 #main div.list div.footer {
@@ -360,6 +364,10 @@ body[orient="landscape"] > .topBar > h1 {
   border : 1px solid #9FAC8F;
 }
 
+form#login > * > *{
+  margin: 10px;
+}
+
 form#login input {
   display: block;
 }
@@ -437,6 +445,7 @@ div.message {
   min-height: 80px;
   padding-top: 20px;
 }
+
 /*
 #main > ul > li.group {
     position: relative;
