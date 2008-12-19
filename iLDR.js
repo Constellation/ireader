@@ -6,7 +6,13 @@
  *               working on iphone and ipod touch.
  *
  *  using [ simple version of $X   ] (c) id:os0x
+ *                                   from http://gist.github.com/3242
  *        [ relativeToAbsolutePath ] (c) id:Yuichirou
+ *                                   from http://d.hatena.ne.jp/Yuichirou/20080225#1203905483
+ *        [ fc2_img_referer_hack   ] (c) id:javascripter
+ *                                   from http://gist.github.com/35666
+ *        [ LDRFc2ImageRefererHack ] (c) id:korn_freak
+ *                                   from http://born1981.g.hatena.ne.jp/korn_freak/20081215/1229316484
  *  thanks
  */
 var iRead = function(){};
@@ -1459,8 +1465,8 @@ iRead.List = {
     //  'subscribers_count'    : 'Subscribers (desc.)',
     //  'subscribers_count:reverse'  : 'Subscribers (asc.)'
     var tmp = iRead.Config.sort_mode.split(':');
-		var key = tmp[0];
-		var option = tmp[1];//reverse
+    var key = tmp[0];
+    var option = tmp[1];//reverse
     if(option == 'reverse') list.reverse();
     return list.sort(function(a, b){
       return (a[key] == b[key] ? 0 : a[key] < b[key] ? 1 : -1);
@@ -1513,7 +1519,7 @@ iRead.List = {
   clear: function(){
     this.subs = [];
     this.current = 0;
-    this.element && iRead.$D(this.element);
+    this.element && $D(this.element);
   },
   clear_feed: function(){
     this.subs && this.subs.forEach(function(feed){
@@ -1541,10 +1547,10 @@ iRead.Ready.add(iRead.List);
 iRead.Pin = {
   pins: [],
   hash: {},
-  element: iRead.$N('div', {'id': 'pins_list', 'class': 'list'}),
-  item: iRead.$N('div', {'class': 'pin_item item'}),
-  item_body: iRead.$N('span', {'class': 'pin_body'}),
-  item_anchor: iRead.$N('a', {'class': 'pin_anchor', 'target': 'blank'}),
+  element: $N('div', {'id': 'pins_list', 'class': 'list'}),
+  item: $N('div', {'class': 'pin_item item'}),
+  item_body: $N('span', {'class': 'pin_body'}),
+  item_anchor: $N('a', {'class': 'pin_anchor', 'target': 'blank'}),
   add: function(item){
     if(this.check(item.link)) return false;
     // console.info('ADD PIN');
@@ -1715,12 +1721,12 @@ iRead.Feed = new iRead.Class({
     elements.footer.setAttribute('id', 'footer_'+this.subscribe_id);
     // create feed header
     elements.header = stock.header.cloneNode(true);
-    elements.header.appendChild(iRead.$CF('<h2 style="background: url('+this.icon+') no-repeat left center;">'+this.title+'</h2>'));
+    elements.header.appendChild($CF('<h2 style="background: url('+this.icon+') no-repeat left center;">'+this.title+'</h2>'));
     // create feed content
     elements.content = stock.content.cloneNode(true);
     elements.content.setAttribute('id', 'content_'+this.subscribe_id);
 
-    elements.element = iRead.$N('div', {
+    elements.element = $N('div', {
       'id'   : 'feed_'+this.subscribe_id,
       'class': 'list'
     }, [
@@ -1759,7 +1765,7 @@ iRead.Feed = new iRead.Class({
     return iRead.View.show_feed(this.subscribe_id);
   },
   add: function(){
-    var df = iRead.$DF();
+    var df = $DF();
     var states = this.states;
     var elements = this.elements;
     if(states.all) return;
@@ -1848,28 +1854,29 @@ iRead.Item = new iRead.Class({
   initialize: function(obj, feed){
     Object.update(this, obj);
     this.feed = feed;
-    this.body = this.filter(this.body);
+    iRead.Item.filtering(this);
     this.elements = {};
     this.signals  = [];
     this.states = {
       fullfeed : false
     };
 
-    var elements = iRead.Item.elements;
-    this.elements.item = elements.item.cloneNode();
+    var class_elements = iRead.Item.elements;
+    var elements = this.elements;
+    elements.item = class_elements.item.cloneNode();
     // create header
-    this.elements.header = elements.item_header.cloneNode();
-    this.elements.header.appendChild(iRead.$CF('<h3 class="item_title"><a href="'+this.link+'">'+this.title+'</a></h3>'));
+    elements.header = class_elements.item_header.cloneNode();
+    elements.header.appendChild($CF('<h3 class="item_title"><a href="'+this.link+'">'+this.title+'</a></h3>'));
     // create footer
-    this.elements.footer = elements.item_footer.cloneNode();
-    this.elements.footer.appendChild(iRead.Widget.create(this));
-    this.elements.item_body = elements.item_body.cloneNode();
+    elements.footer = class_elements.item_footer.cloneNode();
+    elements.footer.appendChild(iRead.Widget.create(this));
+    elements.item_body = class_elements.item_body.cloneNode();
 
-    var df = iRead.$DF();
-    df.appendChild(this.elements.header);
-    df.appendChild(this.elements.item_body);
-    df.appendChild(this.elements.footer);
-    this.elements.item.appendChild(df);
+    var df = $DF();
+    df.appendChild(elements.header);
+    df.appendChild(elements.item_body);
+    df.appendChild(elements.footer);
+    elements.item.appendChild(df);
   },
   ready: function(){
     // Tumblr Big Photo to Small
@@ -1878,44 +1885,53 @@ iRead.Item = new iRead.Class({
     this.add_filter(function(text, item){
       return text.replace(/(<img[^>]*src="http:\/\/(?:data|media).tumblr.com\/.+_)\d\d\d(.jpg)/gi, "$1250$2");
     });
+    // Refhack for fc2
+    this.add_filter(function(item){
+      if(item.feed.channel.link.match(/fc2/)){
+        item.body.replace(
+          /<a ([^>]*?)href="(.+?)\.(jpg|png|gif|jpeg)"/ig,
+          '<a \1href="data:text/html,<head><meta http-equiv=\"Refresh\" content=\"0;url=\2.\3\" /></head>');
+      }
+    });
     */
   },
   elements: {
-    item: iRead.$N('div', {'class': 'list_item item'}),
-    item_body: iRead.$N('div', {'class': 'item_body'}),
-    item_footer: iRead.$N('div', {'class': 'item_footer'}),
-    item_header: iRead.$N('div', {'class': 'item_header'}),
+    item: $N('div', {'class': 'list_item item'}),
+    item_body: $N('div', {'class': 'item_body'}),
+    item_footer: $N('div', {'class': 'item_footer'}),
+    item_header: $N('div', {'class': 'item_header'}),
 //    item_title: iRead.$N('h3', {'class': 'item_title'}),
 //    item_title_anchor: iRead.$N('a'),
   },
   filters: [],
   add_filter: function(func){
-    (iRead.isArray(func))
+    (isArray(func))
       ? func.forEach(function(f){ this.add_filter(f) }, this)
       : this.filters.push(func);
     return func;
+  },
+  filtering: function(item){
+    this.filters.forEach(function(func){
+      func(item);
+    });
   }
   },{
-  filter: function(text){
-    iRead.Item.filters.forEach(function(func){
-      text = func(text, this);
-    }, this);
-    return text;
-  },
   create: function(){
     this.check_pin() && addClass(this.elements.item, 'pinned');
-    this.elements.item_body.appendChild(iRead.$CF(this.body));
+    this.elements.item_body.appendChild($CF(this.body));
     return this.elements.item;
   },
   del: function(){
     // remove listeners
+    var Event = iRead.Event;
     this.signals && this.signals.forEach(function(signal){
-      iRead.Event._disconnect(signal);
+      Event._disconnect(signal);
     });
   },
   fullfeed: function(){
     if(!this.states.fullfeed) return;
     // console.info('FULLFEED');
+    var FullFeed = iRead.FullFeed;
     this.elements.item && addClass(this.elements.item, 'fullfeed');
     return Chain.hash({
       res  : iRead.API.access(this.link),
@@ -1926,10 +1942,10 @@ iRead.Item = new iRead.Class({
           data = hash.data[1];
       if(!hash.res[0] || !hash.data[0]) throw iRead.error.line;
       // create HTMLDocument
-      var htmldoc = iRead.FullFeed.parse(res, this, data);
+      var htmldoc = FullFeed.parse(res, this, data);
       // FullFeed
-      var entry = iRead.FullFeed.get(htmldoc, this, data);
-      iRead.$D(this.elements.item_body);
+      var entry = FullFeed.get(htmldoc, this, data);
+      $D(this.elements.item_body);
       this.elements.item_body.appendChild(entry);
       this.elements.item && removeClass(this.elements.item, 'fullfeed');
     }, this)
@@ -1959,7 +1975,7 @@ iRead.Ready.add(iRead.Item);
 iRead.Widget = {
   list: [],
   channel_list: [],
-  widget: iRead.$N('div', {'class': 'widget'}),
+  widget: $N('div', {'class': 'widget'}),
   ready: function(){
     // datetime widget
     var datetime = {
@@ -1981,10 +1997,10 @@ iRead.Widget = {
           ? text
           : '0'+text;
       },
-      span: iRead.$N('span', {'class': 'datetime'}),
+      span: $N('span', {'class': 'datetime'}),
       create: function(item){
         var widget = this.span.cloneNode();
-        widget.appendChild(iRead.$T('posted: ' + this.datetime_formatter(item.created_on)));
+        widget.appendChild($T('posted: ' + this.datetime_formatter(item.created_on)));
         return widget;
       }
     };
@@ -1992,7 +2008,7 @@ iRead.Widget = {
 
     // pin widget
     var pin = {
-      span: iRead.$N('span', {
+      span: $N('span', {
         'class': 'pin',
         'title': 'pin'
       }),
@@ -2010,7 +2026,7 @@ iRead.Widget = {
 
     // fullfeed widget
     var fullfeed = {
-      span: iRead.$N('span', {
+      span: $N('span', {
         'class': 'fullfeed',
         'title': '全文取得できるよ!'
         }, 'G'),
@@ -2041,7 +2057,7 @@ iRead.Widget = {
     return obj;
   },
   create: function(item){
-    var df = iRead.$DF();
+    var df = $DF();
     this.list.forEach(function(w){
       var content = w.create(item);
       if(content){
@@ -2053,7 +2069,7 @@ iRead.Widget = {
     return df;
   },
   create_channel: function(feed){
-    var df = iRead.$DF();
+    var df = $DF();
     this.channel_list.forEach(function(w){
       var content = w.create(item);
       if(content){
@@ -2110,11 +2126,21 @@ iRead.FullFeed = {
         return true;
       });
       nodes.forEach(function(e){
-        iRead.$X('descendant::*[self::script or self::h2]', e)
+        $X('descendant::*[self::script or self::h2]', e)
         .forEach(function(i){
           i.parentNode.removeChild(i);
         });
       });
+    }),
+    (function(nodes, item){
+      if(item.link.match(/fc2/)){
+        nodes.forEach(function(e){
+          $X('descendant-or-self::a', e)
+          .forEach(function(anchor){
+            anchor.href = 'data:text/html,<head><meta http-equiv="Refresh" content="0;url='+anchor.href+'" /></head>';
+          });
+        });
+      }
     })
   ],
   add_filter: function(filter){
@@ -2169,7 +2195,7 @@ iRead.FullFeed = {
     try {
       var text = res.responseText;
       var htmldoc = document.implementation.createHTMLDocument('fullfeed');
-      var df = iRead.$CF(text);
+      var df = $CF(text);
       nl = df.childNodes;
       htmldoc.body.appendChild(df);
       this.remove_risks(htmldoc);
@@ -2188,7 +2214,7 @@ iRead.FullFeed = {
     data.microformats && (entry = this.getByMicroformats(htmldoc));
     if(entry.length == 0){
       try{
-        entry = iRead.$X(data.xpath, htmldoc);
+        entry = $X(data.xpath, htmldoc);
       } catch(e) {
         iRead.Dialog.message({
           message: 'Something is wrong with this XPath',
@@ -2200,7 +2226,7 @@ iRead.FullFeed = {
     }
     if(entry.length > 0){
       this.filters.forEach(function(f) { f(entry, item) }, this);
-      var df = iRead.$DF();
+      var df = $DF();
       entry.forEach(function(element){
         element = document.adoptNode(element, true);
         df.appendChild(element);
@@ -2235,12 +2261,12 @@ iRead.FullFeed = {
   },
   remove_risks: function(htmldoc){
     var attr = "allowscriptaccess";
-    iRead.$X("descendant-or-self::embed", htmldoc)
+    $X("descendant-or-self::embed", htmldoc)
       .forEach(function(elm){
       if(!elm.hasAttribute(attr)) return;
       elm.setAttribute(attr, "never");
     });
-    iRead.$X("descendant-or-self::param", htmldoc)
+    $X("descendant-or-self::param", htmldoc)
       .forEach(function(elm){
       if(!elm.getAttribute("name") || elm.getAttribute("name").toLowerCase().indexOf(attr) < 0) return;
       elm.setAttribute("value", "never");
@@ -2251,11 +2277,11 @@ iRead.FullFeed = {
       'top' : base.match(this.rel2abs_regs['top'])[0],
       'current' : base.replace(this.rel2abs_regs['current1'], '/'),
     };
-    iRead.$X("descendant-or-self::a", htmldoc)
+    $X("descendant-or-self::a", htmldoc)
     .forEach(function(elm){
       if(elm.getAttribute("href")) elm.href = this._rel2abs(elm.getAttribute("href"), o);
     }, this);
-    iRead.$X("descendant-or-self::img", htmldoc)
+    $X("descendant-or-self::img", htmldoc)
     .forEach(function(elm){
       if(elm.getAttribute("src")) elm.src = this._rel2abs(elm.getAttribute("src"), o);
     }, this);
@@ -2287,7 +2313,7 @@ iRead.FullFeed = {
   getByMicroformats: function(htmldoc){
     var t;
     this.microformats.some(function(i){
-      t = iRead.$X(i.xpath, htmldoc)
+      t = $X(i.xpath, htmldoc)
       if(t.length>0){
         return true;
       }
@@ -2578,7 +2604,7 @@ var SQL = new iRead.Class({
     }, {
       // trans.createTable('mytable', {id: 'INTEGER', name: 'TEXT'});
       createTable: function(name, obj){
-        if(iRead.isArray(name)) name = name.join(', ');
+        if(isArray(name)) name = name.join(', ');
         var params = obj.map(function(value, key){
           return key + ' ' + value;
         }).join(', ');
@@ -2588,7 +2614,7 @@ var SQL = new iRead.Class({
       },
       // trans.insert('mytable', {id: 1, name: 'Constellation' });
       insert: function(name, obj){
-        if(iRead.isArray(name)) name = name.join(', ');
+        if(isArray(name)) name = name.join(', ');
         name = SQL.escapeSQL(name);
         var columns = [];
         var values = [];
@@ -2611,7 +2637,7 @@ var SQL = new iRead.Class({
       // return Chain Object
       // NOT USING setTimeout => later etc.
       selectAll: function(name){
-        if(iRead.isArray(name)) name = name.join(', ');
+        if(isArray(name)) name = name.join(', ');
         var ret = new Chain();
         ret.SETTIMEOUT = false;
         name = SQL.escapeSQL(name);
@@ -2622,7 +2648,7 @@ var SQL = new iRead.Class({
         return ret;
       },
       del: function(name, obj){
-        if(iRead.isArray(name)) name = name.join(', ');
+        if(isArray(name)) name = name.join(', ');
         name = SQL.escapeSQL(name);
         var data = [];
         obj.forEach(function(v, k){
@@ -2632,7 +2658,7 @@ var SQL = new iRead.Class({
         this.execute('DELETE FROM ' + name + ' WHERE ' + data);
       },
       delAll: function(name){
-        if(iRead.isArray(name)) name = name.join(', ');
+        if(isArray(name)) name = name.join(', ');
         name = SQL.escapeSQL(name);
         this.execute('DELETE FROM ' + name);
       },
@@ -2643,10 +2669,10 @@ var SQL = new iRead.Class({
       },
   }),
   escapeSQL: function(text){
-    return (iRead.isString(text))? text.replace(SQL.reg.q, "''").replace(SQL.reg.e, "\\\\") : "";
+    return (isString(text))? text.replace(SQL.reg.q, "''").replace(SQL.reg.e, "\\\\") : "";
   },
   unescapeSQL: function(text){
-    return (iRead.isString(text))? text.replace(SQL.reg.d, "'").replace(SQL.reg.u, "\\") : "";
+    return (isString(text))? text.replace(SQL.reg.d, "'").replace(SQL.reg.u, "\\") : "";
   },
   reg: {
     q: /'/g,
