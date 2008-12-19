@@ -1830,10 +1830,8 @@ iRead.Feed = new iRead.Class({
       }
     }, this)
     .both(function(){
-      console.info(index);
       iRead.Feed.touch_table[index] = false;
       iRead.Feed.touch_procs[index] = null;
-      console.info(iRead.Feed.touch_procs);
     })) - 1;
     return proc;
   },
@@ -2199,13 +2197,10 @@ iRead.FullFeed = {
       nl = df.childNodes;
       htmldoc.body.appendChild(df);
       this.remove_risks(htmldoc);
-      console.info('OK');
       var resolver = this.path_resolver(res.finalUrl || item.link);
-      console.info(resolver);
       this.rel2abs(resolver, htmldoc);
       return htmldoc;
     } catch(e) {
-      console.info(e);
       throw iRead.error.html;
     }
   },
