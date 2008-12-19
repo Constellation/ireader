@@ -2199,13 +2199,13 @@ iRead.FullFeed = {
       nl = df.childNodes;
       htmldoc.body.appendChild(df);
       this.remove_risks(htmldoc);
-      if(res.finalUrl){
-        this.rel2abs(htmldoc, res.finalUrl);
-      } else {
-        this.rel2abs(htmldoc, item.link);
-      }
+      console.info('OK');
+      var resolver = this.path_resolver(res.finalUrl || item.link);
+      console.info(resolver);
+      this.rel2abs(resolver, htmldoc);
       return htmldoc;
     } catch(e) {
+      console.info(e);
       throw iRead.error.html;
     }
   },
@@ -2272,43 +2272,25 @@ iRead.FullFeed = {
       elm.setAttribute("value", "never");
     });
   },
-  rel2abs: function(htmldoc, base) {
-    var o = {
-      'top' : base.match(this.rel2abs_regs['top'])[0],
-      'current' : base.replace(this.rel2abs_regs['current1'], '/'),
-    };
-    $X("descendant-or-self::a", htmldoc)
-    .forEach(function(elm){
-      if(elm.getAttribute("href")) elm.href = this._rel2abs(elm.getAttribute("href"), o);
-    }, this);
-    $X("descendant-or-self::img", htmldoc)
-    .forEach(function(elm){
-      if(elm.getAttribute("src")) elm.src = this._rel2abs(elm.getAttribute("src"), o);
-    }, this);
-  },
-  _rel2abs: function(url, obj) {
-    var top_link = obj['top'], current_link = obj['current'];
-    if (url.match(this.rel2abs_regs['home'])) {
-      return url;
-    } else if (url.indexOf("/") == 0) {
-      return top_link + url;
-    } else {
-      if(url.indexOf(".") == 0){
-        while(url.indexOf(".") == 0){
-          if(url.substring(0, 3) == "../")
-            current_link = current_link.replace(this.rel2abs_regs['current2'],"/");
-          url = url.replace(this.rel2abs_regs['url'],"")
-        }
-      }
-      return current_link + url;
+  path_resolver: function(base){
+    var XHTML_NS = "http://www.w3.org/1999/xhtml";
+    var XML_NS = "http://www.w3.org/XML/1998/namespace";
+    var a = document.createElementNS(XHTML_NS, 'a');
+    a.setAttributeNS(XML_NS, 'xml:base', base);
+    return function(path){
+      a.href = path;
+      return a.href;
     }
   },
-  rel2abs_regs: {
-    'top': /^https?:\/\/[^\/]+/,
-    'home': /^https?:\/\//,
-    'current1': /\/[^\/]+$/,
-    'current2': /\/[^\/]+\/$/,
-    'url': /^\.+\//
+  rel2abs: function(resolver, htmldoc){
+    $X("descendant-or-self::*[self::a[@href] or self::img[@src]]", htmldoc)
+    .forEach(function(elm){
+      if(elm.nodeName == 'A'){
+        if(elm.getAttribute("href")) elm.href = resolver(elm.getAttribute("href"));
+      } else {
+        if(elm.getAttribute("src")) elm.src = resolver(elm.getAttribute("src"));
+      }
+    }, this);
   },
   getByMicroformats: function(htmldoc){
     var t;
