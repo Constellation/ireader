@@ -64,6 +64,11 @@ Array.prototype.reduce = function(f, s){
   });
   return s;
 }
+Array.prototype.forEachRight = function(f, t){
+  for(var l = this.length-1; l >= 0; --l){
+    f.call(t || this, this[l], l, this);
+  }
+}
 Array.prototype.uniq = function(){
   return this.reduce(function(e, r){
     !~e.indexOf(r) && e.push(r);
@@ -324,7 +329,9 @@ iRead.ready = function(){
   (function(){
     var View = iRead.View;
     Ev.connect('dblclick', function(e){
-      View.next_item();
+      var offset = e.clientY;
+      var main_height = window.innerHeight/2;
+      offset < main_height? View.prev_item() : View.next_item();
     }, $('main'), false);
   })();
 }
