@@ -268,10 +268,10 @@ iRead.ready = function(){
   var View = iRead.View;
   Ev.connect("orientationchange", this.hideUrlBar, window, false);
   Ev.connect("click", function(){
-    !(View.mode == 'subs') && View.show_subs();
+    View.mode != 'subs' && View.show_subs();
   }, this.$('subs'), false);
   Ev.connect("click", function(){
-    !(View.mode == 'pins') && View.show_pins();
+    View.mode != 'pins' && View.show_pins();
   }, this.$('pins'), false);
   Ev.connect("click", function(){
     View.reload();
@@ -285,10 +285,10 @@ iRead.ready = function(){
     var key = String.fromCharCode(code);
     switch(key){
       case 'j':
-        View.next();
+        View.next_item();
         break;
       case 'k':
-        View.prev();
+        View.prev_item();
         break;
       case 't':
         View.touch();
@@ -297,17 +297,21 @@ iRead.ready = function(){
         View.show_pins();
         break;
       case 's':
-        View.show_subs();
+        View.next();
+        break;
+      case 'a':
+        View.prev();
         break;
     }
   }, window, false);
+  // AutoPager
   (function(){
     var hold = 200;
     var list = iRead.List;
     Ev.connect('scroll', function(e){
       if(View.mode != 'feed') return;
       var current = list.subs[list.current];
-      if(current && current.states.read && !current.ahead){
+      if(current && current.states.read && !current.ahead && !current.states.all){
         var height = window.pageYOffset + window.innerHeight;
         var all = iRead.isMobile? document.documentElement.clientHeight : document.documentElement.scrollHeight;
         if(all - height < hold){
@@ -315,6 +319,13 @@ iRead.ready = function(){
         }
       }
     }, window, false);
+  })();
+  // double touch scroller
+  (function(){
+    var View = iRead.View;
+    Ev.connect('dblclick', function(e){
+      View.next_item();
+    }, $('main'), false);
   })();
 }
 
@@ -400,7 +411,7 @@ iRead.Ready = {
   },
   remove: function(obj){
     var index = this.list.indexOf(obj);
-    if(!(index == -1)){
+    if(index != -1){
       return this.list.splice(index, 1);
     }
   },
@@ -1084,7 +1095,7 @@ iRead.View = {
   mode: '',
   restore: '',
   next: function(){
-    if(!(this.mode == 'feed')) return false;
+    if(this.mode != 'feed') return false;
     window.scrollTo(0, 0);
     var next = iRead.Feed.next();
     if(!next){
@@ -1097,7 +1108,7 @@ iRead.View = {
     return next;
   },
   prev: function(){
-    if(!(this.mode == 'feed')) return false;
+    if(this.mode != 'feed') return false;
     window.scrollTo(0, 0);
     var prev = iRead.Feed.prev()
     if(!prev){
@@ -1109,8 +1120,47 @@ iRead.View = {
     }
     return prev;
   },
+  next_item: function(){
+    if(this.mode != 'feed') return false;
+    var List = iRead.List;
+    var main_offset = $('main').offsetTop;
+    var now_offset = window.pageYOffset - main_offset;
+    var current = List.subs[List.current];
+    var target_offset = null;
+    if(current.items.some(function(item){
+      if(!item.states.shown) return false;
+      target_offset = item.elements.item.offsetTop;
+      return (now_offset < target_offset)
+    })){
+      var all = iRead.isMobile? document.documentElement.clientHeight : document.documentElement.scrollHeight;
+      var height = target_offset + window.innerHeight + main_offset;
+      if(height > all){
+        var diff = height - all;
+        current.elements.footer.style.height = 30 +  diff + 'px';
+      }
+      window.scrollTo(0, target_offset + main_offset);
+    }
+  },
+  prev_item: function(){
+    if(this.mode != 'feed') return false;
+    var List = iRead.List;
+    var main_offset = $('main').offsetTop;
+    var now_offset = window.pageYOffset - main_offset;
+    var current = List.subs[List.current];
+    var target_offset = null;
+    if($A(current.items).reverse().some(function(item){
+      if(!item.states.shown) return false;
+      target_offset = item.elements.item.offsetTop;
+      return (now_offset > target_offset)
+    })){
+      window.scrollTo(0, target_offset + main_offset);
+    } else {
+      if(now_offset <= current.items[0].elements.item.offsetTop)
+        window.scrollTo(0, 0);
+    }
+  },
   touch: function(){
-    if(!(this.mode == 'feed')) return false;
+    if(this.mode != 'feed') return false;
     return iRead.Feed.touch();
   },
   sort: function(mode){
@@ -1266,7 +1316,7 @@ iRead.List = {
   current: 0,
   element: $N('div', {'id': 'subs_list', 'class': 'list'}),
   elements: {
-    spacer: $N('div', {'class': 'spacer'}),
+    spacer: $N('span', {'class': 'spacer'}),
   },
   rates: [
     '☆☆☆☆☆',
@@ -1288,7 +1338,7 @@ iRead.List = {
     var Event = iRead.Event;
     main.appendChild(this.element);
     Event.connect('touchstart', function(es){
-      if(!(View.mode == 'feed')) return;
+      if(View.mode != 'feed') return;
       var x = es.touches[0].pageX;
       var t = 0;
       var move_sig = Event.connect('touchmove', function(e){
@@ -1720,10 +1770,10 @@ iRead.Feed = new iRead.Class({
     elements.footer = stock.footer.cloneNode(true);
     elements.footer.setAttribute('id', 'footer_'+this.subscribe_id);
     // create feed header
-    elements.header = stock.header.cloneNode(true);
+    elements.header = stock.header.cloneNode(false);
     elements.header.appendChild($CF('<h2 style="background: url('+this.icon+') no-repeat left center;">'+this.title+'</h2>'));
     // create feed content
-    elements.content = stock.content.cloneNode(true);
+    elements.content = stock.content.cloneNode(false);
     elements.content.setAttribute('id', 'content_'+this.subscribe_id);
 
     elements.element = $N('div', {
@@ -1856,7 +1906,8 @@ iRead.Item = new iRead.Class({
     this.elements = {};
     this.signals  = [];
     this.states = {
-      fullfeed : false
+      fullfeed : false,
+      shown    : false
     };
 
     var class_elements = iRead.Item.elements;
@@ -1915,6 +1966,7 @@ iRead.Item = new iRead.Class({
   }
   },{
   create: function(){
+    this.states.shown = true;
     this.check_pin() && addClass(this.elements.item, 'pinned');
     this.elements.item_body.appendChild($CF(this.body));
     return this.elements.item;

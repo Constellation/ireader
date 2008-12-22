@@ -154,15 +154,16 @@ body[orient="landscape"] > .topBar > h1 {
   height: auto;
 }
 
-#main div.list div.item:nth-child(odd) {
+#main div.list div.item:nth-of-type(odd) {
   background-color: #F1F1F1;
 }
 
-#main div.list div.item:nth-child(even) {
+#main div.list div.item:nth-of-type(even) {
   background-color:#FFFFFF;
 }
 
-#main div.list div.spacer {
+#main div.list span.spacer {
+  display: block;
   height: 20px;
   color: #FFFFFF;
   background-color: rgba(79, 79, 79, 0.6);
@@ -252,6 +253,12 @@ body[orient="landscape"] > .topBar > h1 {
   height: 30px;
   font-size: 15px;
   font-weight: bold;
+}
+
+#main div.list div.space {
+  display: block;
+  background-color: #FFFFFF;
+  height: 0px;
 }
 
 #main div#pins_list {
