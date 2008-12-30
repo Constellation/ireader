@@ -17,6 +17,8 @@
  */
 var iRead = function(){};
 iRead.VERSION = '0.0.2';
+iRead.doc = _doc = document;//global cache
+iRead.win = _win = window;
 
 // Object
 Object.prototype.keys = function(){
@@ -57,7 +59,7 @@ Object.update = function(c, o, exclude){
 
 // Array
 Array.prototype.reduce = function(f, s){
-  var a = iRead.$A(this);
+  var a = $A(this);
   s = s? f(s, a.shift(), 0) : a.shift();
   a.forEach(function(e, r){
     s = f(s, e, ++r);
@@ -79,7 +81,7 @@ Array.prototype.flatten = function(){
   var ret = [];
   var f = function(arr){
     arr.forEach(function(e){
-      iRead.isArray(e)? f(e) : ret.push(e);
+      isArray(e)? f(e) : ret.push(e);
     });
   }
   f(this);
@@ -144,31 +146,31 @@ isDate = iRead.isDate = function(obj){
   return (obj instanceof Date);
 }
 $ = iRead.$ = function(id){
-  return (id in iRead.$.hash && iRead.$.hash[id])? iRead.$.hash[id] : (iRead.$.hash[id] = document.getElementById(id));
+  return (id in iRead.$.hash && iRead.$.hash[id])? iRead.$.hash[id] : (iRead.$.hash[id] = _doc.getElementById(id));
 }
 iRead.$.hash = {};
 $N = iRead.$N = function(name, attrs, childs){
-  var ret = document.createElement(name), value, attr;
+  var ret = _doc.createElement(name), value, attr;
   for (attr in attrs){
     if(!attrs.hasOwnProperty(attr)) continue;
     value = attrs[attr];
     (attr == 'class')? ret.className = value : ret.setAttribute(attr, value);
   }
-  (iRead.isString(childs))
-    ? ret.appendChild(document.createTextNode(childs))
-    : (iRead.isArray(childs)) && childs.forEach(function(child){
-      (iRead.isString(child))
-        ? ret.appendChild(document.createTextNode(child))
+  (isString(childs))
+    ? ret.appendChild(_doc.createTextNode(childs))
+    : (isArray(childs)) && childs.forEach(function(child){
+      (isString(child))
+        ? ret.appendChild(_doc.createTextNode(child))
         : ret.appendChild(child);
       });
   return ret;
 }
 $T = iRead.$T = function(text){
-  return document.createTextNode(text);
+  return _doc.createTextNode(text);
 }
 // delete
 $D = iRead.$D = function(elm){
-  var range = document.createRange();
+  var range = _doc.createRange();
   range.selectNodeContents(elm);
   range.deleteContents();
   range.detach();
@@ -176,11 +178,11 @@ $D = iRead.$D = function(elm){
 // remove
 // reuse elements => available
 $d = iRead.$d = function(elm){
-  var range = document.createRange();
+  var range = _doc.createRange();
   range.selectNodeContents(elm);
   var df = range.extractContents();
-  iRead.$A(df.childNodes).forEach(function(e){
-    iRead.$R(e);
+  $A(df.childNodes).forEach(function(e){
+    $R(e);
   });
   range.insertNode(df);
   range.detach();
@@ -191,7 +193,7 @@ $R = iRead.$R = function(elm){
 }
 
 $DF = iRead.$DF = function(){
-  return document.createDocumentFragment();
+  return _doc.createDocumentFragment();
 }
 $CL = iRead.$CL = function(node, flag){
   return node.cloneNode && node.cloneNode(flag);
@@ -204,10 +206,10 @@ $A = iRead.$A = function(a){
 // $X(exp, context);
 // @source http://gist.github.com/3242.txt
 $X = iRead.$X = function(exp, context) {
-  context || (context = document);
+  context || (context = _doc);
   var expr = (context.ownerDocument || context).createExpression(exp, function (prefix) {
-    return document.createNSResolver(context.documentElement || context).lookupNamespaceURI(prefix) ||
-      context.namespaceURI || document.documentElement.namespaceURI || "";
+    return _doc.createNSResolver(context._docElement || context).lookupNamespaceURI(prefix) ||
+      context.namespaceURI || _doc.documentElement.namespaceURI || "";
   });
 
   var result = expr.evaluate(context, XPathResult.ANY_TYPE, null);
@@ -253,25 +255,25 @@ iRead.DOM = {
 iRead.hideUrlBar = function(){
   var id = setTimeout(function() {
     clearTimeout(id);
-    window.scrollTo(0, 1);
+    _win.scrollTo(0, 1);
   }, 0);
 }
 var $CF;
 iRead.ready = function(){
   this.db = openDatabase('reader', '1.0', 'Database for iRead');
   $CF = this.$CF = function(text){
-    return iRead.$CF.range.createContextualFragment(text);
+    return $CF.range.createContextualFragment(text);
   }
-  this.$CF.range = document.createRange()
-  this.$CF.range.selectNodeContents(document.body);
-  this.body = document.body;
-  this.head = document.getElementsByTagName('head')[0];
+  this.$CF.range = _doc.createRange()
+  this.$CF.range.selectNodeContents(_doc.body);
+  this.body = _doc.body;
+  this.head = _doc.getElementsByTagName('head')[0];
   this.login_form = $CF('<form id="login"><fieldset><input type="text" value="" name="reader_id"  placeholder="id" /><input type="password" value="" name="reader_password" placeholder="password" /><div><select name="reader_type" size=3><option value="LDR">LDR<option value="FLDR">FLDR</select></div><input type="button" value="Login" onclick="(function(){ iRead.start() })();" /><input type="button" value="DELETE" onclick="(function(){ iRead.del() })();" /></fieldset></form>').firstChild;
   this.hideUrlBar();
   // Connect
   var Ev = this.Event;
   var View = iRead.View;
-  Ev.connect("orientationchange", this.hideUrlBar, window, false);
+  Ev.connect("orientationchange", this.hideUrlBar, _win, false);
   Ev.connect("click", function(){
     View.mode != 'subs' && View.show_subs();
   }, this.$('subs'), false);
@@ -308,7 +310,7 @@ iRead.ready = function(){
         View.prev();
         break;
     }
-  }, window, false);
+  }, _win, false);
   // AutoPager
   (function(){
     var hold = 200;
@@ -317,23 +319,25 @@ iRead.ready = function(){
       if(View.mode != 'feed') return;
       var current = list.subs[list.current];
       if(current && current.states.read && !current.ahead && !current.states.all){
-        var height = window.pageYOffset + window.innerHeight;
-        var all = iRead.isMobile? document.documentElement.clientHeight : document.documentElement.scrollHeight;
+        var height = _win.pageYOffset + _win.innerHeight;
+        var all = iRead.isMobile? _doc.documentElement.clientHeight : _doc.documentElement.scrollHeight;
         if(all - height < hold){
           current && current.add();
         }
       }
-    }, window, false);
+    }, _win, false);
   })();
   // double touch scroller
+  /*
   (function(){
     var View = iRead.View;
     Ev.connect('dblclick', function(e){
       var offset = e.clientY;
-      var main_height = window.innerHeight/2;
+      var main_height = _win.innerHeight/2;
       offset < main_height? View.prev_item() : View.next_item();
     }, $('main'), false);
   })();
+  */
 }
 
 // iRead Event
@@ -405,7 +409,7 @@ iRead.Event = {
     this.event = event;
     this.slot = slot;
     this.dom = (!!target.addEventListener);
-    this.target = target || window;
+    this.target = target || _win;
     this.cap = (!!cap);
   }
 }
@@ -612,9 +616,9 @@ iRead.Dialog = {
   show: function(){
     var main_style = this.main.style;
     var overlay_style = this.overlay.style;
-    overlay_style.height = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight) + 'px';
+    overlay_style.height = Math.max(_doc.documentElement.scrollHeight, _doc.body.scrollHeight) + 'px';
     overlay_style.display = 'block';
-    main_style.top = (window.scrollY + 50) + 'px';
+    main_style.top = (_win.scrollY + 50) + 'px';
     main_style.opacity = '0.6';
     main_style.display = 'block';
   },
@@ -980,7 +984,7 @@ iRead.API = {
               ApiKey   : iRead.ApiKey,
               type     : iRead.type,
               cookie   : iRead.cookie,
-              unread   : (iRead.Config["show_all"]? 0 : 1),
+              unread   : 1,//(iRead.Config["show_all"]? 0 : 1),
               from_id  : from_id,
               limit    : limit
       }})
@@ -1103,7 +1107,7 @@ iRead.View = {
   restore: '',
   next: function(){
     if(this.mode != 'feed') return false;
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     var next = iRead.Feed.next();
     if(!next){
       iRead.Dialog.message({
@@ -1116,7 +1120,7 @@ iRead.View = {
   },
   prev: function(){
     if(this.mode != 'feed') return false;
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     var prev = iRead.Feed.prev()
     if(!prev){
       iRead.Dialog.message({
@@ -1131,7 +1135,7 @@ iRead.View = {
     if(this.mode != 'feed') return false;
     var List = iRead.List;
     var main_offset = $('main').offsetTop;
-    var now_offset = window.pageYOffset - main_offset;
+    var now_offset = _win.pageYOffset - main_offset;
     var current = List.subs[List.current];
     var target_offset = null;
     if(current.items.some(function(item){
@@ -1139,20 +1143,20 @@ iRead.View = {
       target_offset = item.elements.item.offsetTop;
       return (now_offset < target_offset)
     })){
-      var all = iRead.isMobile? document.documentElement.clientHeight : document.documentElement.scrollHeight;
-      var height = target_offset + window.innerHeight + main_offset;
+      var all = iRead.isMobile? _doc.documentElement.clientHeight : _doc.documentElement.scrollHeight;
+      var height = target_offset + _win.innerHeight + main_offset;
       if(height > all){
         var diff = height - all;
         current.elements.footer.style.height = 30 +  diff + 'px';
       }
-      window.scrollTo(0, target_offset + main_offset);
+      _win.scrollTo(0, target_offset + main_offset);
     }
   },
   prev_item: function(){
     if(this.mode != 'feed') return false;
     var List = iRead.List;
     var main_offset = $('main').offsetTop;
-    var now_offset = window.pageYOffset - main_offset;
+    var now_offset = _win.pageYOffset - main_offset;
     var current = List.subs[List.current];
     var target_offset = null;
     if($A(current.items).reverse().some(function(item){
@@ -1160,10 +1164,10 @@ iRead.View = {
       target_offset = item.elements.item.offsetTop;
       return (now_offset > target_offset)
     })){
-      window.scrollTo(0, target_offset + main_offset);
+      _win.scrollTo(0, target_offset + main_offset);
     } else {
       if(now_offset <= current.items[0].elements.item.offsetTop)
-        window.scrollTo(0, 0);
+        _win.scrollTo(0, 0);
     }
   },
   touch: function(){
@@ -1171,12 +1175,12 @@ iRead.View = {
     return iRead.Feed.touch();
   },
   sort: function(mode){
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     iRead.List.sort(mode);
   },
   config: function(){
     // console.info('CONFIG');
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     return Chain.add(function(){
       iRead.List.hide();
       iRead.Pin.hide();
@@ -1191,7 +1195,7 @@ iRead.View = {
     });
   },
   reload: function(){
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     iRead.Feed.hide();
     iRead.List.hide();
     iRead.Pin.hide();
@@ -1236,7 +1240,7 @@ iRead.View = {
   },
   show_subs: function(){
     if(this.mode == 'subs') return false;
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     return Chain.add(function(){
       iRead.Pin.hide();
       iRead.Feed.hide();
@@ -1252,7 +1256,7 @@ iRead.View = {
   },
   show_pins: function(){
     if(this.mode == 'pins') return false;
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     return Chain.add(function(){
       iRead.List.hide();
       return iRead.Feed.hide();
@@ -1268,7 +1272,7 @@ iRead.View = {
   },
   show_feed: function(id){
     if(this.mode == 'feed') return false;
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     this.restore = this.mode;
     this.mode = 'feed';
     return Chain.list([
@@ -1281,7 +1285,7 @@ iRead.View = {
     });
   },
   start: function(reload){
-    window.scrollTo(0, 0);
+    _win.scrollTo(0, 0);
     iRead.Pin.create(reload);
     iRead.List.create(reload);
     iRead.Feed.create(reload);
@@ -1998,7 +2002,7 @@ iRead.Item = new iRead.Class({
       var res  = hash.res[1],
           data = hash.data[1];
       if(!hash.res[0] || !hash.data[0]) throw iRead.error.line;
-      // create HTMLDocument
+      // create HTML_doc
       var htmldoc = FullFeed.parse(res, this, data);
       // FullFeed
       var entry = FullFeed.get(htmldoc, this, data);
@@ -2251,7 +2255,7 @@ iRead.FullFeed = {
   parse: function(res, item, data){
     try {
       var text = res.responseText;
-      var htmldoc = document.implementation.createHTMLDocument('fullfeed');
+      var htmldoc = _doc.implementation.createHTMLDocument('fullfeed');
       var df = $CF(text);
       nl = df.childNodes;
       htmldoc.body.appendChild(df);
@@ -2282,7 +2286,7 @@ iRead.FullFeed = {
       this.filters.forEach(function(f) { f(entry, item) }, this);
       var df = $DF();
       entry.forEach(function(element){
-        element = document.adoptNode(element, true);
+        element = _doc.adoptNode(element, true);
         df.appendChild(element);
       });
       return df;
@@ -2329,7 +2333,7 @@ iRead.FullFeed = {
   path_resolver: function(base){
     var XHTML_NS = "http://www.w3.org/1999/xhtml";
     var XML_NS = "http://www.w3.org/XML/1998/namespace";
-    var a = document.createElementNS(XHTML_NS, 'a');
+    var a = _doc.createElementNS(XHTML_NS, 'a');
     a.setAttributeNS(XML_NS, 'xml:base', base);
     return function(path){
       a.href = path;
@@ -2590,7 +2594,7 @@ XHR = new iRead.Class({
 // JSONP
 JSONP = new iRead.Class({
   initialize: function(url, opt){
-    var script = document.createElement('script'),
+    var script = _doc.createElement('script'),
         ret = new Chain(),
         params = [],
         name = 'callback'+(JSONP.id++);
@@ -2600,7 +2604,7 @@ JSONP = new iRead.Class({
     opt.data.callback = 'JSONP.callbacks.'+name;
     JSONP.callbacks[name] = function(json){
       delete JSONP.callbacks[name];
-      document.getElementsByTagName('head')[0].removeChild(script);
+      _doc.getElementsByTagName('head')[0].removeChild(script);
       ret.succeed(json);
     }
 
@@ -2614,7 +2618,7 @@ JSONP = new iRead.Class({
     script.type    = 'text/javascript';
     script.charset = 'utf-8';
     script.src     = url;
-    document.getElementsByTagName('head')[0].appendChild(script);
+    _doc.getElementsByTagName('head')[0].appendChild(script);
 
     return ret;
   },
@@ -2723,4 +2727,4 @@ var SQL = new iRead.Class({
 iRead.Event.connect('DOMContentLoaded', function(e){
   iRead.Ready.start();
   iRead.load();
-}, window, false);
+}, _win, false);
